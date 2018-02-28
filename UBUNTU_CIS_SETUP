@@ -1,17 +1,16 @@
 #! /bin/bash
 
 # UTILITY FUNCTIONS
+check_sudo() {
+	if [ "$EUID" -ne 0 ]
+	then echo "Please run as root"
+		exit
+	fi
+}
+
 wait_a() {
 	read -n 1 -s -r -p $1
 }
-
-# TODO: 
-# File integrity checking OSSEC
-# APPARMOR
-# set permissions! (SOME ARE CHECKED)
-# HOST-BASED FWALL <-- test firewall
-# LOGGING <-- I don't know howwwwwwwwwwwwwwwwwwww
-# PASSWORD POLICY <-- Install them!!
 
 set_firewall() {
 	vim iptables.rules
@@ -19,11 +18,16 @@ set_firewall() {
 }
 
 set_password_policy() {
-		
+	cp ubuntu/common-password /etc/pam.d/common-password
+	cp ubuntu/common-auth /etc/pam.d/common-auth
+	cp ubuntu/login.defs /etc/login.defs
+	cp ubuntu/sshd_config /etc/ssh/sshd_config
+	cp ubuntu/sysctl.conf /etc/sysctl.conf
+
 }
 
 fix_dependencies () {
-	DEPS="vim\nchpasswd\ntasksel\nlibpam-pwquality\nauditd"
+	DEPS="vim\nchpasswd\ntasksel\nlibpam-pwquality\nauditd\niptables"
 	KILL="openbsd-inetd\nxserver-xorg*\navahi-daemon\ncups\nnfs-kernel-server\nvsftpd\nsmbd\nsquid3\nsnmpd\nrsync\nypserv\nnis\nrsh-client\nrsh-redone-client\ntalk\nntalk\ntelnet\nldap-utils\nopenssh*\nlightdm"
 	for pkg in $DEPS; do
 		apt install $pkg
