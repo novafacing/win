@@ -9,7 +9,7 @@ check_sudo() {
 }
 
 wait_a() {
-	read -n 1 -s -r -p $1
+	read -n 1 -s -r -p "$1"
 }
 
 set_firewall() {
@@ -27,8 +27,8 @@ set_password_policy() {
 }
 
 fix_dependencies () {
-	DEPS="vim\nchpasswd\ntasksel\nlibpam-pwquality\nauditd\niptables\nlibpam-cracklib"
-	KILL="openbsd-inetd\nxserver-xorg*\navahi-daemon\ncups\nnfs-kernel-server\nvsftpd\nsmbd\nsquid3\nsnmpd\nrsync\nypserv\nnis\nrsh-client\nrsh-redone-client\ntalk\nntalk\ntelnet\nldap-utils\nopenssh*\nlightdm"
+	DEPS="vim chpasswd tasksel libpam-pwquality auditd iptables libpam-cracklib"
+	KILL="openbsd-inetd xserver-xorg* avahi-daemon cups nfs-kernel-server vsftpd smbd squid3 snmpd rsync ypservd nis rsh-client rsh-redone-client talk ntalk telnet ldap-utils openssh* lightdm"
 	for pkg in $DEPS; do
 		apt install $pkg
 	done
