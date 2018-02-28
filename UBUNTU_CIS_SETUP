@@ -27,7 +27,7 @@ set_password_policy() {
 }
 
 fix_dependencies () {
-	DEPS="vim\nchpasswd\ntasksel\nlibpam-pwquality\nauditd\niptables"
+	DEPS="vim\nchpasswd\ntasksel\nlibpam-pwquality\nauditd\niptables\nlibpam-cracklib"
 	KILL="openbsd-inetd\nxserver-xorg*\navahi-daemon\ncups\nnfs-kernel-server\nvsftpd\nsmbd\nsquid3\nsnmpd\nrsync\nypserv\nnis\nrsh-client\nrsh-redone-client\ntalk\nntalk\ntelnet\nldap-utils\nopenssh*\nlightdm"
 	for pkg in $DEPS; do
 		apt install $pkg
@@ -35,6 +35,11 @@ fix_dependencies () {
 	for pkg in $KILL; do
 		apt purge $pkg
 	done
+	echo "Installing LYNIS"
+	mkdir /var/lynis
+	git clone https://github.com/CISOfy/lynis
+	cp -av lynis/* /var/lynis
+	chown -R 0:0 /var/lynis
 }
 
 check_inetd() {
@@ -510,3 +515,18 @@ oneliners() {
 # NOTES FROM CISCO:
 # Remove sessions from apache
 # 
+
+main() {
+	check_sudo
+	fix_dependencies
+	check_inetd
+	check_root_path
+	check_home_dirs
+	set_nologin
+	do_permissions
+	oneliners
+	echo "Printing CRONTAB:"
+	print_crontab
+	set_firewall
+	set_password_policy
+}
