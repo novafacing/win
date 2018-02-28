@@ -51,7 +51,7 @@ check_inetd() {
 	for file in $EDITS; do
 		vim $file
 	done
-	wait_a "Set disable = yes where applicable."
+	wait_a 'Set disable = yes where applicable.'
 	vim /etc/xinetd.conf
 	vim /etc/inetd.conf
 }
@@ -405,9 +405,9 @@ replace_sources() {
 oneliners() {
 	# SET STICKY BIT
 	df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type d -perm -0002 2>/dev/null | xargs chmod a+t
-	wait_a "Comment out lines that start with start on runlevel [XXXX]"
+	wait_a 'Comment out lines that start with start on runlevel [XXXX]'
 	vim /etc/init/autofs.conf
-	wait_a "Press enter to begin setting passwords"
+	wait_a 'Press enter to begin setting passwords'
 	read -p "Input password: " PASSWORD
 	awk -F ':' '{print $1}' /etc/shadow
 	echo "root:$PASSWORD" | chpasswd
@@ -424,13 +424,13 @@ oneliners() {
 	echo "Verifying ASLR Protection. Should = 2"
 	grep "kernel\.randomize_va_space" /etc/sysctl.conf /etc/sysctl.d/*
 	sysctl kernel.randomize_va_space
-	wait_a "Set kernel.randomize_va_space = 2"
+	wait_a 'Set kernel.randomize_va_space = 2'
 	vim /etc/sysctl.conf
 	prelink -ua
 	apt-get remove prelink
 	echo "Ensure no unconfined daemons"
 	ps -eZ | egrep "initrc" | egrep -vw "tr|ps|egrep|bash|awk" | tr ':' ' ' | awk '{ print $NF }'	
-	wait_a "Change the MOTD/ISSUE and then ensure the output of the greps is null"
+	wait_a 'Change the MOTD/ISSUE and then ensure the output of the greps is null'
 	MOTD="WARNING: THIS IS A RESTRICTED SYSTEM. ALL ACTIVITY MAY BE MONITORED, REPORTED, AND PERSECUTED."
 	echo $MOTD > /etc/motd
 	echo $MOTD > /etc/issue
@@ -440,7 +440,7 @@ oneliners() {
 	egrep '(\\v|\\r|\\m|\\s)' /etc/issue.net
 	dconf update
 	check_inetd
-	wait_a "Comment out any start xinetd lines: "
+	wait_a 'Comment out any start xinetd lines: '
 	vim /etc/init/xinetd.conf
 	update-rc.d slapd disable
 	sysctl -w net.ipv4.ip_forward=0
@@ -466,7 +466,7 @@ oneliners() {
 	sysctl -w net.ipv4.route.flush=1
 	grep "^\s*linux" /boot/grub/grub.cfg
 	sed -i "s/alias net-pf-10 ipv6/alias net-pf-10 off\nalias ipv6 off/" /etc/modprobe.d/aliases
-	wait_a "ipv6.disable=1 should be set. Otherwise add ipv6.disable=1 to GRUB_CMDLINE_LINUX"
+	wait_a 'ipv6.disable=1 should be set. Otherwise add ipv6.disable=1 to GRUB_CMDLINE_LINUX'
 	vim /etc/default/grub
 	update-grub
 	cat /etc/hosts.allow
@@ -475,23 +475,23 @@ oneliners() {
 	read -p "Enter network blocks to blacklist, separated by commas in the form <net>/<mask> (192.168.1.0/255.255.255.0" HOSTS_DENY
 	echo "ALL: $HOSTS_DENY" > /etc/hosts.deny
 	echo "install dccp /bin/true\ninstall sctp /bin/true\ninstall rds /bin/true\ninstall tipc /bin/true" > /etc/modprobe.d/CIS.conf
-	wait_a "Checking if system accounts are login"
+	wait_a 'Checking if system accounts are login'
 	egrep -v "^\+" /etc/passwd | awk -F: '($1!="root" && $1!="sync" && $1!="shutdown" && $1!="halt" && $3<1000 && $7!="/usr/sbin/nologin" && $7!="/bin/false") {print}'
-	wait_a "Running nologin setup script"
+	wait_a 'Running nologin setup script'
 	set_nologin
 	usermod -g 0 root	
 	cat /etc/securetty
-	wait_a "If anything comes up for insecure TTY, remove the entries."
+	wait_a 'If anything comes up for insecure TTY, remove the entries.'
 	df --local -P | awk {&#039;if (NR!=1) print $6&#039;} | xargs -I &#039;{}&#039; find &#039;{}&#039; -xdev -type f -perm -0002
-	wait_a "World writable files searched. Correct permissions with chmod o-w <filename"
+	wait_a 'World writable files searched. Correct permissions with chmod o-w <filename'
 	df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nouser
-	wait_a "Non-owned files searched. Correct permissions by using chown or removing the files."
+	wait_a 'Non-owned files searched. Correct permissions by using chown or removing the files.'
 	df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nogroup
-	wait_a "Non-grouped files searched. Correct permissions by using chown or removing files."
+	wait_a 'Non-grouped files searched. Correct permissions by using chown or removing files.'
 	df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type f -perm -4000
-	wait_a "SUID Programs listed. If any exist, audit them carefully."
+	wait_a 'SUID Programs listed. If any exist, audit them carefully.'
 	df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type f -perm -2000
-	wait_a "SGID Programs listed. If any exist, audit them carefully."
+	wait_a 'SGID Programs listed. If any exist, audit them carefully.'
 	cat /etc/shadow | awk -F: '($2 == "" ) { print $1 " does not have a password "}'
 	grep '^\+:' /etc/passwd	
 	grep '^\+:' /etc/shadow
@@ -503,9 +503,9 @@ oneliners() {
 	auditctl -w /etc/group -k group-file -p rwxa
 	check_root_path
 	check_home_dirs
-	wait_a "Removing Graphical User Interface. Select correct packages."
+	wait_a 'Removing Graphical User Interface. Select correct packages.'
 	tasksel
-	wait_a "Replace quiet splash with text"
+	wait_a 'Replace quiet splash with text'
 	vim /etc/grub
 	update-grub
 	update-rc.d -f lightdm remove
