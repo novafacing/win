@@ -1,0 +1,7 @@
+wget https://github.com/ossec/ossec-hids/archive/2.9.1.tar.gz
+tar -xvzf 2.9.1.tar.gz
+cd ossec-hids-2.9.1/
+sudo ./install.sh
+sudo vim /var/ossec/etc/ossec.conf
+sudo /var/ossec/bin/ossec-control start
+

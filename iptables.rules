@@ -1,0 +1,63 @@
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:Always - [0:0]
+:Allow - [0:0]
+:Bogus - [0:0]
+:Enemies - [0:0]
+:Friends - [0:0]
+
+-A INPUT -j Bogus
+-A INPUT -j Always
+-A INPUT -j Enemies
+-A INPUT -j Allow
+
+-A FORWARD -j Bogus
+-A FORWARD -j Always
+-A FORWARD -j Enemies
+-A FORWARD -j Allow
+
+-A Bogus -p tcp -m tcp --tcp-flags SYN,FIN SYN,FIN -j DROP
+-A Bogus -p tcp -m tcp --tcp-flags SYN,RST SYN,RST -j DROP
+-A Bogus -s 169.254.0.0/16 -j DROP
+-A Bogus -s 172.16.0.0/12 -j DROP
+-A Bogus -s 192.0.2.0/24 -j DROP
+-A Bogus -s 192.168.0.0/16 -j DROP
+-A Bogus -s 10.0.0.0/8 -j DROP
+-A Bogus -s 127.0.0.0/8 -i ! lo -j DROP
+
+-A Always -p udp --dport 123 -j ACCEPT
+-A Always -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A Always -i lo -j ACCEPT
+
+# -A Friends -s <ip addr>/<subnet> -j ACCEPT : EX -A Friends -s 123.123.123.123 -j ACCEPT or -A Friends -s 111.111.111.0/24 -j ACCEPT
+-A Friends -j DROP
+
+-A Enemies  -m recent --name psc --update --seconds 60 -j DROP
+-A Enemies -i ! lo -m tcp -p tcp --dport 1433  -m recent --name psc --set -j DROP
+-A Enemies -i ! lo -m tcp -p tcp --dport 3306  -m recent --name psc --set -j DROP
+-A Enemies -i ! lo -m tcp -p tcp --dport 8086  -m recent --name psc --set -j DROP
+-A Enemies -i ! lo -m tcp -p tcp --dport 10000 -m recent --name psc --set -j DROP
+-A Enemies -s 99.99.99.99 -j DROP
+
+-A Allow -p icmp --icmp-type echo-request -j Friends
+-A Allow -p icmp --icmp-type any -m limit --limit 1/second -j ACCEPT
+-A Allow -p icmp --icmp-type any -j ACCEPT
+# -A Allow -p tcp -m state --state NEW -m tcp --dport 22 -j Friends
+# -A Allow -p tcp -m state --state NEW -m tcp --dport 25 -j ACCEPT
+# -A Allow -p tcp -m state --state NEW -m tcp --dport 80 -j ACCEPT
+# -A Allow -p tcp -m state --state NEW -m tcp --dport 443 -j ACCEPT
+# < FOR DNS > 
+# -A Allow -p tcp -m state --state NEW -m tcp --dport 53 -j ACCEPT
+# -A Allow -p udp -m state --state NEW -m udp --dport 53 -j ACCEPT
+# < FOR WEB >
+# -A Allow -p tcp -m state --state NEW -m tcp --dport 443 -j ACCEPT # HTTPS
+# -A Allow -p tcp -m state --state NEW -m tcp --dport 80 -j ACCEPT # HTTP
+# < FOR MAIL > 
+# -A Allow -p tcp -m state --state NEW -m tcp --dport 25 -j ACCEPT
+# -A Allow -p tcp -m state --state NEW -m tcp --dport 587 -j ACCEPT
+# -A Allow -p tcp -m state --state NEW -m tcp --dport 993 -j ACCEPT
+-A Allow -j DROP
+
+COMMIT

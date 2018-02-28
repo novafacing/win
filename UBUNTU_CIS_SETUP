@@ -1,0 +1,508 @@
+#! /bin/bash
+
+# UTILITY FUNCTIONS
+wait_a() {
+	read -n 1 -s -r -p $1
+}
+
+# TODO: 
+# File integrity checking OSSEC
+# APPARMOR
+# set permissions! (SOME ARE CHECKED)
+# HOST-BASED FWALL <-- test firewall
+# LOGGING <-- I don't know howwwwwwwwwwwwwwwwwwww
+# PASSWORD POLICY <-- Install them!!
+
+set_firewall() {
+	vim iptables.rules
+	iptables-restore < iptables.rules
+}
+
+set_password_policy() {
+		
+}
+
+fix_dependencies () {
+	DEPS="vim\nchpasswd\ntasksel\nlibpam-pwquality\nauditd"
+	KILL="openbsd-inetd\nxserver-xorg*\navahi-daemon\ncups\nnfs-kernel-server\nvsftpd\nsmbd\nsquid3\nsnmpd\nrsync\nypserv\nnis\nrsh-client\nrsh-redone-client\ntalk\nntalk\ntelnet\nldap-utils\nopenssh*\nlightdm"
+	for pkg in $DEPS; do
+		apt install $pkg
+	done
+	for pkg in $KILL; do
+		apt purge $pkg
+	done
+}
+
+check_inetd() {
+	CHECK="chargen daytime discard echo time shell login exec talk ntalk telnet tftp"
+	for mod in $CHECK; do
+		grep -n -R "^$mod" /etc/inetd.* /dev/null
+	done
+	read -p "Enter inetd.d/* and xinetd.d/* files to edit: " EDITS
+	for file in $EDITS; do
+		vim $file
+	done
+	wait_a "Set disable = yes where applicable."
+	vim /etc/xinetd.conf
+	vim /etc/inetd.conf
+}
+
+check_root_path() {
+	if [ "`echo $PATH | grep :: `" != "" ]; then
+		echo "Empty Directory in PATH (::)"
+	fi
+	if [ "`echo $PATH | grep :$`" != "" ]; then
+		echo "Trailing : in PATH"
+	fi
+	p=`echo $PATH | sed -e 's/::/:/' -e 's/:$//' -e 's/:/ /g'`
+	set -- $p
+	while [ "$1" != "" ]; do
+		if [ "$1" = "." ]; then
+			echo "PATH contains ."
+			shift
+			continue
+		fi
+		if [ -d $1 ]; then
+			dirperm=`ls -ldH $1 | cut -f1 -d" "`
+			if [ `echo $dirperm | cut -c6 ` != "-" ]; then
+				echo "Group Write permission set on directory $1"
+			fi
+			if [ `echo $dirperm | cut -c9 ` != "-" ]; then
+				echo "Other Write permission set on directory $1"
+			fi
+			dirown=`ls -ldH $1 | awk '{print $3}'`
+			if [ "$dirown" != "root" ] ; then
+				echo $1 is not owned by root
+			fi
+		else
+			echo $1 is not a directory
+		fi
+		shift
+	done
+}
+
+check_home_dirs() {
+	cat /etc/passwd | egrep -v '^(root|halt|sync|shutdown)' | awk -F: '($7 !=
+	"/usr/sbin/nologin" && $7 != "/bin/false") { print $1 " " $6 }' | while read
+	user dir; do
+	if [ ! -d "$dir" ]; then
+		echo "The home directory ($dir) of user $user does not exist."
+	else
+		dirperm=`ls -ld $dir | cut -f1 -d" "`
+		if [ `echo $dirperm | cut -c6` != "-" ]; then
+			echo "Group Write permission set on the home directory ($dir) of user
+			$user"
+		fi
+		if [ `echo $dirperm | cut -c8` != "-" ]; then
+			echo "Other Read permission set on the home directory ($dir) of user
+			$user"
+		fi
+		if [ `echo $dirperm | cut -c9` != "-" ]; then
+			echo "Other Write permission set on the home directory ($dir) of user
+			$user"
+		fi
+		if [ `echo $dirperm | cut -c10` != "-" ]; then
+			echo "Other Execute permission set on the home directory ($dir) of user
+			$user"
+		fi
+	fi
+done
+cat /etc/passwd | egrep -v '^(root|halt|sync|shutdown)' | awk -F: '($7 !=
+"/usr/sbin/nologin" && $7 != "/bin/false") { print $1 " " $6 }' | while read
+user dir; do
+if [ ! -d "$dir" ]; then
+	echo "The home directory ($dir) of user $user does not exist."
+else
+	owner=$(stat -L -c "%U" "$dir")
+	if [ "$owner" != "$user" ]; then
+		echo "The home directory ($dir) of user $user is owned by $owner."
+	fi
+fi
+done
+cat /etc/passwd | egrep -v '^(root|halt|sync|shutdown)' | awk -F: '($7 != "/sbin/nologin" && $7 != "/bin/false") { print $1 " " $6 }' | while read user dir; do
+if [ ! -d "$dir" ]; then
+	echo "The home directory ($dir) of user $user does not exist."
+else
+	for file in $dir/.[A-Za-z0-9]*; do
+		if [ ! -h "$file" -a -f "$file" ]; then
+			fileperm=`ls -ld $file | cut -f1 -d" "`
+			if [ `echo $fileperm | cut -c6` != "-" ]; then
+				echo "Group Write permission set on file $file"
+			fi
+			if [ `echo $fileperm | cut -c9` != "-" ]; then
+				echo "Other Write permission set on file $file"
+			fi
+		fi
+	done
+fi
+done
+cat /etc/passwd | egrep -v '^(root|halt|sync|shutdown)' | awk -F: '($7 != "/sbin/nologin" && $7 != "/bin/false") { print $1 " " $6 }' | while read user dir; do
+if [ ! -d "$dir" ]; then
+	echo "The home directory ($dir) of user $user does not exist."
+else
+	if [ ! -h "$dir/.forward" -a -f "$dir/.forward" ]; then
+		echo ".forward file $dir/.forward exists"
+	fi
+fi
+done
+cat /etc/passwd | egrep -v '^(root|halt|sync|shutdown)' | awk -F: '($7 != "/sbin/nologin" && $7 != "/bin/false") { print $1 " " $6 }' | while read user dir; do
+if [ ! -d "$dir" ]; then
+	echo "The home directory ($dir) of user $user does not exist."
+else
+	if [ ! -h "$dir/.netrc" -a -f "$dir/.netrc" ]; then
+		echo ".netrc file $dir/.netrc exists"
+	fi
+fi
+done
+cat /etc/passwd | egrep -v '^(root|halt|sync|shutdown)' | awk -F: '($7 != "/sbin/nologin" && $7 != "/bin/false") { print $1 " " $6 }' | while read user dir; do
+if [ ! -d "$dir" ]; then
+	echo "The home directory ($dir) of user $user does not exist."
+else
+	for file in $dir/.netrc; do
+		if [ ! -h "$file" -a -f "$file" ]; then
+			fileperm=`ls -ld $file | cut -f1 -d" "`
+			if [ `echo $fileperm | cut -c5` != "-" ]; then
+				echo "Group Read set on $file"
+			fi
+			if [ `echo $fileperm | cut -c6` != "-" ]; then
+				echo "Group Write set on $file"
+			fi
+			if [ `echo $fileperm | cut -c7` != "-" ]; then
+				echo "Group Execute set on $file"
+			fi
+			if [ `echo $fileperm | cut -c8` != "-" ]; then
+				echo "Other Read set on $file"
+			fi
+			if [ `echo $fileperm | cut -c9` != "-" ]; then
+				echo "Other Write set on $file"
+			fi
+			if [ `echo $fileperm | cut -c10` != "-" ]; then
+				echo "Other Execute set on $file"
+			fi
+		fi
+	done
+fi
+done
+cat /etc/passwd | egrep -v '^(root|halt|sync|shutdown)' | awk -F: '($7 != "/sbin/nologin" && $7 != "/bin/false") { print $1 " " $6 }' | while read user dir; do
+if [ ! -d "$dir" ]; then
+	echo "The home directory ($dir) of user $user does not exist."
+else
+	for file in $dir/.rhosts; do
+		if [ ! -h "$file" -a -f "$file" ]; then
+			echo ".rhosts file in $dir"
+		fi
+	done
+fi
+done
+for i in $(cut -s -d: -f4 /etc/passwd | sort -u ); do
+	grep -q -P "^.*?:[^:]*:$i:" /etc/group
+	if [ $? -ne 0 ]; then
+		echo "Group $i is referenced by /etc/passwd but does not exist in /etc/group"
+	fi
+done
+cat /etc/passwd | cut -f3 -d":" | sort -n | uniq -c | while read x ; do
+[ -z "${x}" ] && break
+set - $x
+if [ $1 -gt 1 ]; then
+	users=`awk -F: '($3 == n) { print $1 }' n=$2 /etc/passwd | xargs`
+	echo "Duplicate UID ($2): ${users}"
+fi
+done
+cat /etc/group | cut -f3 -d":" | sort -n | uniq -c | while read x ; do
+[ -z "${x}" ] && break
+set - $x
+if [ $1 -gt 1 ]; then
+	groups=`awk -F: '($3 == n) { print $1 }' n=$2 /etc/group | xargs`
+	echo "Duplicate GID ($2): ${groups}"
+fi
+done
+cat /etc/passwd | cut -f1 -d":" | sort -n | uniq -c | while read x ; do
+[ -z "${x}" ] && break
+set - $x
+if [ $1 -gt 1 ]; then
+	uids=`awk -F: '($1 == n) { print $3 }' n=$2 /etc/passwd | xargs`
+	echo "Duplicate User Name ($2): ${uids}"
+fi
+done
+cat /etc/group | cut -f1 -d":" | sort -n | uniq -c | while read x ; do
+[ -z "${x}" ] && break
+set - $x
+if [ $1 -gt 1 ]; then
+	gids=`gawk -F: '($1 == n) { print $3 }' n=$2 /etc/group | xargs`
+	echo "Duplicate Group Name ($2): ${gids}"
+fi
+done
+grep ^shadow:[^:]*:[^:]*:[^:]+ /etc/group
+awk -F: '($4 == "<shadow-gid>") { print }' /etc/passwd
+}
+
+print_crontab() {
+	#if there are errors, check that these directories are correct.
+	CRONTAB='/etc/crontab'
+	CRONDIR='/etc/cron.d'
+
+	tab=$(echo -en "\t")
+
+	#Remove non-cron lines, remove whitespace, make readable.
+	function clean_cron_lines() {
+		while read line ; do
+			echo "${line}" |
+				egrep --invert-match '^($|\s*#|\s*[[:alnum:]_]+=)' |
+				sed --regexp-extended "s/\s+/ /g" |
+				sed --regexp-extended "s/^ //"
+		done;
+	}
+
+	# Given a stream of cleaned crontab lines, echo any that don't include the
+	# run-parts command, and for those that do, show each job file in the run-parts
+	# directory as if it were scheduled explicitly.
+	function lookup_run_parts() {
+		while read line ; do
+			match=$(echo "${line}" | egrep -o 'run-parts (-{1,2}\S+ )*\S+')
+
+			if [[ -z "${match}" ]] ; then
+				echo "${line}"
+			else
+				cron_fields=$(echo "${line}" | cut -f1-6 -d' ')
+				cron_job_dir=$(echo  "${match}" | awk '{print $NF}')
+
+				if [[ -d "${cron_job_dir}" ]] ; then
+					for cron_job_file in "${cron_job_dir}"/* ; do  # */ <not a comment>
+						[[ -f "${cron_job_file}" ]] && echo "${cron_fields} ${cron_job_file}"
+					done
+				fi
+			fi
+		done;
+	}
+
+	# Temporary file for crontab lines.
+	temp=$(mktemp) || exit 1
+
+	# Add all of the jobs from the system-wide crontab file.
+	cat "${CRONTAB}" | clean_cron_lines | lookup_run_parts >"${temp}"
+
+	# Add all of the jobs from the system-wide cron directory.
+	cat "${CRONDIR}"/* | clean_cron_lines >>"${temp}"  # */ <not a comment>
+
+	# Add each user's crontab (if it exists). Insert the user's name between the
+	# five time fields and the command.
+	while read user ; do
+		crontab -l -u "${user}" 2>/dev/null |
+			clean_cron_lines |
+			sed --regexp-extended "s/^((\S+ +){5})(.+)$/\1${user} \3/" >>"${temp}"
+	done < <(cut --fields=1 --delimiter=: /etc/passwd)
+
+	# Output the collected crontab lines. Replace the single spaces between the
+	# fields with tab characters, sort the lines by hour and minute, insert the
+	# header line, and format the results as a table.
+	cat "${temp}" |
+		sed --regexp-extended "s/^(\S+) +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) +(.*)$/\1\t\2\t\3\t\4\t\5\t\6\t\7/" |
+		sort --numeric-sort --field-separator="${tab}" --key=2,1 |
+		sed "1i\mi\th\td\tm\tw\tuser\tcommand" |
+		column -s"${tab}" -t
+
+	rm --force "${temp}"
+}	
+
+upgrade_system() {
+	select askUnattended in "Yes" "No"; do
+		case $askUnattended in
+			Yes)	apt-get install unattended-upgrades; dpkg-reconfigure unattended-upgrades;
+				echo -e "APT::Periodic::Update-Package-Lists \"1\";\nAPT::Periodic::Download-Upgradeable-Packages \"1\";\nAPT::Periodic::AutocleanInterval\"7\";\nAPT::Periodic::Unattended-Upgrade\"1\";\nAPT::Periodic::RandomSleep\"1\";" > /etc/apt/apt.conf.d/10periodic; echo -e "APT::Periodic::Update-Package-Lists \"1\";\nAPT::Periodic::Download-Upgradeable-Packages \"1\";\nAPT::Periodic::AutocleanInterval\"7\";\nAPT::Periodic::Unattended-Upgrade\"1\";\nAPT::Periodic::RandomSleep\"1\";" > /etc/apt/apt.conf.d/20auto-upgrades; echo -e "Unattended-Upgrade::Allowed-Origins {\n	\"\${distro_id}:\${distro_codename}\";\n	\"\${distro_id}:\${distro_codename}-security\";\n	\"\${distro_id}:\${distro_codename}-updates\";\n	\"\${distro_id}:\${distro_codename}-proposed\";\n};\nUnattended-Upgrade::Package-Blacklist {\n};\nUnattended-Upgrade::AutoFixInterruptedDpkg \"false\";\nUnattended-Upgrade::Automatic-Reboot \"true\";\nUnattended-Upgrade::Automatic-Reboot-Time \"03:30\";" > /etc/apt/apt.conf.d/50unattended-upgrades; break;;
+			No )	break;;
+		esac
+	done
+	echo "Which version of Ubuntu are you on? If you do not wish to update the sources.list, select \"nopatch\""
+	select askUbuntuVersion in "Precise" "Trusty" "Xenial" "Debian" "nopatch"; do
+		case $askUbuntuVersion in
+			Precise )	echo -e "deb http://us.archive.ubuntu.com/ubuntu/ precise main restricted universe\ndeb-src http://us.archive.ubuntu.com/ubuntu/ precise main restricted universe multiverse\ndeb http://us.archive.ubuntu.com/ubuntu/ precise-security main restricted universe\ndeb http://us.archive.ubuntu.com/ubuntu/ precise-updates main restricted universe\ndeb http://us.archive.ubuntu.com/ubuntu/ precise-proposed main restricted universe\ndeb-src http://us.archive.ubuntu.com/ubuntu/ precise-security main restricted universe multiverse\ndeb-src http://us.archive.ubuntu.com/ubuntu/ precise-updates main restricted universe multiverse\ndeb-src http://us.archive.ubuntu.com/ubuntu/ precise-proposed main restricted universe multiverse\ndeb-src http://us.archive.ubuntu.com/ubuntu/ precise-backports main restricted universe multiverse" > /etc/apt/sources.list; break;;
+			Trusty  ) 	echo -e "deb http://us.archive.ubuntu.com/ubuntu/ trusty main restricted universe\ndeb-src http://us.archive.ubuntu.com/ubuntu/ trusty main restricted universe multiverse\ndeb http://us.archive.ubuntu.com/ubuntu/ trusty-security main restricted universe\ndeb http://us.archive.ubuntu.com/ubuntu/ trusty-updates main restricted universe\ndeb http://us.archive.ubuntu.com/ubuntu/ trusty-proposed main restricted universe\ndeb-src http://us.archive.ubuntu.com/ubuntu/ trusty-security main restricted universe multiverse\ndeb-src http://us.archive.ubuntu.com/ubuntu/ trusty-updates main restricted universe multiverse\ndeb-src http://us.archive.ubuntu.com/ubuntu/ trusty-proposed main restricted universe multiverse\ndeb-src http://us.archive.ubuntu.com/ubuntu/ trusty-backports main restricted universe multiverse" > /etc/apt/sources.list; break;;
+			Xenial  ) 	echo -e "deb http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe\ndeb-src http://us.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse\ndeb http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe\ndeb http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe\ndeb http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe\ndeb-src http://us.archive.ubuntu.com/ubuntu/ xenial-security main restricted universe multiverse\ndeb-src http://us.archive.ubuntu.com/ubuntu/ xenial-updates main restricted universe multiverse\ndeb-src http://us.archive.ubuntu.com/ubuntu/ xenial-proposed main restricted universe multiverse\ndeb-src http://us.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse " > /etc/apt/sources.list; break;;
+			Debian  )   echo -e "deb http://ftp.us.debian.org/debian/ jessie main contrib non-free\ndeb-src http://ftp.us.debian.org/debian/ jessie main contrib non-free\ndeb http://security.debian.org/ jessie/updates main contrib non-free\ndeb http://ftp.us.debian.org/debian/ jessie-proposed-updates main contrib non-free\ndeb-src http://security.debian.org/ jessie/updates main contrib non-free\ndeb-src http://ftp.us.debian.org/debian/ jessie-proposed-updates main contrib non-free" > /etc/apt/sources.list; break;;
+			nopatch ) 	echo -e "Not updating sources.list"; break;;
+		esac
+	done
+}
+
+do_permissions() {
+	chown root:root /etc/motd
+	chmod 644 /etc/motd
+	chown root:root /etc/issue
+	chmod 644 /etc/issue
+	chown root:root /etc/issue.net
+	chmod 644 /etc/issue.net
+	chown root:root /etc/hosts.allow
+	chmod 644 /etc/hosts.allow
+	chown root:root /etc/hosts.deny
+	chmod 644 /etc/hosts.deny
+	chown root:root /etc/crontab
+	chmod og-rwx /etc/crontab
+	chown root:root /etc/cron.hourly
+	chmod og-rwx /etc/cron.hourly
+	chown root:root /etc/cron.daily
+	chmod og-rwx /etc/cron.daily
+	chown root:root /etc/cron.weekly
+	chmod og-rwx /etc/cron.weekly
+	chown root:root /etc/cron.monthly
+	chmod og-rwx /etc/cron.monthly
+	chown root:root /etc/cron.d
+	chmod og-rwx /etc/cron.d
+	rm /etc/cron.deny
+	rm /etc/at.deny
+	touch /etc/cron.allow
+	touch /etc/at.allow
+	chmod og-rwx /etc/cron.allow
+	chmod og-rwx /etc/at.allow
+	chown root:root /etc/cron.allow
+	chown root:root /etc/at.allow
+	chown root:root /etc/passwd
+	chmod 644 /etc/passwd
+	chown root:shadow /etc/shadow
+	chmod o-rwx,g-wx /etc/shadow
+	chown root:root /etc/group
+	chmod 644 /etc/group
+	chown root:shadow /etc/gshadow
+	chmod o-rwx,g-rw /etc/gshadow
+	chown root:root /etc/passwd-
+	chmod u-x,go-wx /etc/passwd-
+	chown root:root /etc/shadow-
+	chown root:shadow /etc/shadow-
+	chmod o-rwx,g-rw /etc/shadow-
+	chown root:root /etc/group-
+	chmod u-x,go-wx /etc/group-
+	chown root:root /etc/gshadow-
+	chown root:shadow /etc/gshadow-
+	chmod o-rwx,g-rw /etc/gshadow-
+	chmod -R 755 /bin/ 
+	chmod 744 /etc/shadow
+	chown -R root:root /bin/
+}
+
+set_nologin() {
+	for user in `awk -F: '($3 < 1000) {print $1 }' /etc/passwd`; do
+		if [ $user != "root" ]; then
+			usermod -L $user
+			if [ $user != "sync" ] && [ $user != "shutdown" ] && [ $user != "halt" ]; then
+				usermod -s /usr/sbin/nologin $user
+			fi
+		fi
+	done
+}
+
+replace_sources() {
+	true
+}
+
+oneliners() {
+	# SET STICKY BIT
+	df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type d -perm -0002 2>/dev/null | xargs chmod a+t
+	wait_a "Comment out lines that start with start on runlevel [XXXX]"
+	vim /etc/init/autofs.conf
+	wait_a "Press enter to begin setting passwords"
+	read -p "Input password: " PASSWORD
+	awk -F ':' '{print $1}' /etc/shadow
+	echo "root:$PASSWORD" | chpasswd
+	passwd -l root
+	echo "Root password changed."
+	read -p "Usernames, separated by spaces!: " USERS
+	for un in $USERS; do
+		read -p "Input password: " PASSWORD
+		echo $un":$PASSWORD" | chpasswd
+	done
+	echo `grep ^root:[*\!]: /etc/shadow`
+	echo "Verifying NX protection"
+	dmesg | grep NX
+	echo "Verifying ASLR Protection. Should = 2"
+	grep "kernel\.randomize_va_space" /etc/sysctl.conf /etc/sysctl.d/*
+	sysctl kernel.randomize_va_space
+	wait_a "Set kernel.randomize_va_space = 2"
+	vim /etc/sysctl.conf
+	prelink -ua
+	apt-get remove prelink
+	echo "Ensure no unconfined daemons"
+	ps -eZ | egrep "initrc" | egrep -vw "tr|ps|egrep|bash|awk" | tr ':' ' ' | awk '{ print $NF }'	
+	wait_a "Change the MOTD/ISSUE and then ensure the output of the greps is null"
+	MOTD="WARNING: THIS IS A RESTRICTED SYSTEM. ALL ACTIVITY MAY BE MONITORED, REPORTED, AND PERSECUTED."
+	echo $MOTD > /etc/motd
+	echo $MOTD > /etc/issue
+	echo $MOTD > /etc/issue.net
+	egrep '(\\v|\\r|\\m|\\s)' /etc/motd
+	egrep '(\\v|\\r|\\m|\\s)' /etc/issue
+	egrep '(\\v|\\r|\\m|\\s)' /etc/issue.net
+	dconf update
+	check_inetd
+	wait_a "Comment out any start xinetd lines: "
+	vim /etc/init/xinetd.conf
+	update-rc.d slapd disable
+	sysctl -w net.ipv4.ip_forward=0
+	sysctl -w net.ipv4.conf.all.send_redirects=0
+	sysctl -w net.ipv4.conf.default.send_redirects=0
+	sysctl -w net.ipv4.conf.all.accept_source_route=0
+	sysctl -w net.ipv4.conf.default.accept_source_route=0
+	sysctl -w net.ipv4.conf.all.accept_redirects=0
+	sysctl -w net.ipv4.conf.default.accept_redirects=0
+	sysctl -w net.ipv4.conf.all.secure_redirects=0
+	sysctl -w net.ipv4.conf.default.secure_redirects=0
+	sysctl -w net.ipv4.conf.all.log_martians=1
+	sysctl -w net.ipv4.conf.default.log_martians=1
+	sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1
+	sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1
+	sysctl -w net.ipv4.conf.all.rp_filter=1
+	sysctl -w net.ipv4.conf.default.rp_filter=1
+	sysctl -w net.ipv4.tcp_syncookies=1
+	sysctl -w net.ipv6.conf.all.accept_ra=0
+	sysctl -w net.ipv6.conf.default.accept_ra=0
+	sysctl -w net.ipv6.conf.all.accept_redirects=0
+	sysctl -w net.ipv6.conf.default.accept_redirects=0
+	sysctl -w net.ipv4.route.flush=1
+	grep "^\s*linux" /boot/grub/grub.cfg
+	sed -i "s/alias net-pf-10 ipv6/alias net-pf-10 off\nalias ipv6 off/" /etc/modprobe.d/aliases
+	wait_a "ipv6.disable=1 should be set. Otherwise add ipv6.disable=1 to GRUB_CMDLINE_LINUX"
+	vim /etc/default/grub
+	update-grub
+	cat /etc/hosts.allow
+	read -p "Enter network blocks to whitelist, separated by commas in the form <net>/<mask> (192.168.1.0/255.255.255.0" HOSTS_ALLOW
+	echo "ALL: $HOSTS_ALLOW" > /etc/hosts.allow
+	read -p "Enter network blocks to blacklist, separated by commas in the form <net>/<mask> (192.168.1.0/255.255.255.0" HOSTS_DENY
+	echo "ALL: $HOSTS_DENY" > /etc/hosts.deny
+	echo "install dccp /bin/true\ninstall sctp /bin/true\ninstall rds /bin/true\ninstall tipc /bin/true" > /etc/modprobe.d/CIS.conf
+	wait_a "Checking if system accounts are login"
+	egrep -v "^\+" /etc/passwd | awk -F: '($1!="root" && $1!="sync" && $1!="shutdown" && $1!="halt" && $3<1000 && $7!="/usr/sbin/nologin" && $7!="/bin/false") {print}'
+	wait_a "Running nologin setup script"
+	set_nologin
+	usermod -g 0 root	
+	cat /etc/securetty
+	wait_a "If anything comes up for insecure TTY, remove the entries."
+	df --local -P | awk {&#039;if (NR!=1) print $6&#039;} | xargs -I &#039;{}&#039; find &#039;{}&#039; -xdev -type f -perm -0002
+	wait_a "World writable files searched. Correct permissions with chmod o-w <filename"
+	df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nouser
+	wait_a "Non-owned files searched. Correct permissions by using chown or removing the files."
+	df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nogroup
+	wait_a "Non-grouped files searched. Correct permissions by using chown or removing files."
+	df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type f -perm -4000
+	wait_a "SUID Programs listed. If any exist, audit them carefully."
+	df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type f -perm -2000
+	wait_a "SGID Programs listed. If any exist, audit them carefully."
+	cat /etc/shadow | awk -F: '($2 == "" ) { print $1 " does not have a password "}'
+	grep '^\+:' /etc/passwd	
+	grep '^\+:' /etc/shadow
+	grep '^\+:' /etc/group
+	cat /etc/passwd | awk -F: '($3 == 0) { print $1 " is improperly UID 0}'
+	/etc/init.d/auditd start
+	auditctl -w /etc/shadow -k shadow-file -p rwxa
+	auditctl -w /tmp -p e -k webserver0watch-tmp
+	auditctl -w /etc/group -k group-file -p rwxa
+	check_root_path
+	check_home_dirs
+	wait_a "Removing Graphical User Interface. Select correct packages."
+	tasksel
+	wait_a "Replace quiet splash with text"
+	vim /etc/grub
+	update-grub
+	update-rc.d -f lightdm remove
+	apt-get update
+	apt-get upgrade
+}
+# NOTES FROM CISCO:
+# Remove sessions from apache
+# 
