@@ -13,6 +13,8 @@ of or inability to use the sample scripts or documentation, even If Microsoft
 has been advised of the possibility of such damages 
 #>
 
+#Retrieved from https://gallery.technet.microsoft.com/scriptcenter/How-to-switch-UAC-level-0ac3ea11#content
+
 New-Variable -Name Key
 New-Variable -Name PromptOnSecureDesktop_Name
 New-Variable -Name ConsentPromptBehaviorAdmin_Name
