@@ -99,6 +99,8 @@ do
 }
 while ($CrntService -ne $NULL)
 
+#Start Windows Update service
+Start-Service wuauserv
 
 #Disable unnecessary network components
 Write-Host Disabling network components.
@@ -151,15 +153,24 @@ Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer
 #Disables tracking of recent documents in Taskbar Properties
 Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_TrackDocs" -Value 0
 
+#Create new Hosts file
+$ScriptLocation = Get-Location 
+Set-Location ..\..\..\..
+$DriveLetter = Get-Location
+Move-Item -path $ScriptLocation\hosts -destination $DriveLetter\Windows\system32\drivers\etc\hosts -force
+Set-Location $ScriptLocation
+
 #Set UAC level to high
 Import-Module .\SwitchUACLevel.psm1
 Get-Command -Module SwitchUACLevel
 Set-UACLevel 3
+Write-Host Set UAC level to High
 
 #Enables custom local security policies
 #secedit /configure /db %temp%\temp.sdb /cfg S12.inf
 
 #Removes Windows Features
+Write-Host Removing PowerShell ISE
 Remove-WindowsFeature -Name PowerShell-ISE
 
 #Restricts PowerShell scripts
