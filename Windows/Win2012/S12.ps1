@@ -167,7 +167,7 @@ Set-UACLevel 3
 Write-Host Set UAC level to High
 
 #Enables custom local security policies
-#secedit /configure /db %temp%\temp.sdb /cfg S12.inf
+secedit /configure /db %temp%\temp.sdb /cfg S12.inf
 
 #Removes Windows Features
 Write-Host Removing PowerShell ISE
