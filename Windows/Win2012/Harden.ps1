@@ -1,7 +1,7 @@
 ﻿#Created by Zamanry, 05/2018
 
 #Import firewall
-Netsh advfirewall import "5.23.18.wfw"
+Netsh advfirewall import "S12.wfw"
 Write-Host Firewall installed.
 
 #Flush DNS
@@ -11,6 +11,7 @@ Ipconfig /flushdns
 Write-Host Disabling/stopping services.
 $Services = 
 'Browser',
+'ALG',
 'TrkWks',
 'fdPHost',
 'FDResPub',
@@ -62,7 +63,20 @@ $Services =
 'Audiosrv',
 'AudioEndpointBuilder',
 #'Dhcp', #Unless DHCP is required
-'DPS'
+'DPS',
+'MozillaMaintenance',
+'PlugPlay',
+'WSService',
+'WerSvc',
+'PolicyAgent',
+'IKEEXT',
+'hidserv',
+'WdiSystemHost',
+'WdiServiceHost',
+'RpcLocator',
+'KPSSVC',
+'AppMgmt',
+'Power'
 
 $Index = 0
 $CrntService = $Services[$Index]
@@ -142,11 +156,11 @@ Import-Module .\SwitchUACLevel.psm1
 Get-Command -Module SwitchUACLevel
 Set-UACLevel 3
 
+#Enables custom local security policies
+#secedit /configure /db %temp%\temp.sdb /cfg S12.inf
+
 #Removes Windows Features
 Remove-WindowsFeature -Name PowerShell-ISE
-
-#Enables custom local security policies
-#secedit /configure /db %temp%\temp.sdb /cfg 5.23.18.inf ############ WIP
 
 #Restricts PowerShell scripts
 Set-ExecutionPolicy restricted
