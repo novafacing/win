@@ -1,12 +1,14 @@
 ﻿#Created by Zamanry, 05/2018
 
 #Import firewall
-Netsh advfirewall import "5.22.18.wfw"
+Netsh advfirewall import "5.23.18.wfw"
+Write-Host Firewall installed.
 
 #Flush DNS
 Ipconfig /flushdns
 
 #Disable & stop services
+Write-Host Disabling/stopping services.
 $Services = 
 'Browser',
 'TrkWks',
@@ -60,9 +62,7 @@ $Services =
 'Audiosrv',
 'AudioEndpointBuilder',
 #'Dhcp', #Unless DHCP is required
-'gpsvc',
-'DPS',
-'WLMS'
+'DPS'
 
 $Index = 0
 $CrntService = $Services[$Index]
@@ -85,7 +85,9 @@ do
 }
 while ($CrntService -ne $NULL)
 
+
 #Disable unnecessary network components
+Write-Host Disabling network components.
 Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_tcpip6'
 Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_rspndr'
 Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_lltdio'
@@ -95,7 +97,7 @@ Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_pacer'
 Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_server'
 
 #Disable IPv6 completely
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services" -Name "DisabledComponents" -PropertyType DWORD -Value "0xFF" -Force 
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services" -Name "DisabledComponents" -Type DWORD -Value "0xFF" -Force 
 
 #Disable 'Register this connection's addresses in DNS'
 $NIC = Get-WmiObject Win32_NetworkAdapterConfiguration -filter "ipenabled = 'true'"
@@ -109,7 +111,7 @@ $NIC = [wmiclass]'Win32_NetworkAdapterConfiguration'
 $NIC.enablewins($false,$false)
 
 #Prevent Server Manager from opening at startup
-Set-ItemProperty -Path "HKLM:\Software\Microsoft\ServerManager" -Name "DoNotOpenServerManagerAtLogon" -PropertyType DWORD -Value "0x1" –Force
+Set-ItemProperty -Path "HKLM:\Software\Microsoft\ServerManager" -Name "DoNotOpenServerManagerAtLogon" -Type DWORD -Value "0x1" –Force
 
 #Disables IGMP
 Netsh interface ipv4 set global mldlevel = none
@@ -135,16 +137,16 @@ Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer
 #Disables tracking of recent documents in Taskbar Properties
 Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_TrackDocs" -Value 0
 
+#Set UAC level to high
+Import-Module .\SwitchUACLevel.psm1
+Get-Command -Module SwitchUACLevel
+Set-UACLevel 3
+
 #Removes Windows Features
 Remove-WindowsFeature -Name PowerShell-ISE
 
 #Enables custom local security policies
-secedit /configure /db %temp%\temp.sdb /cfg 5.21.18.inf
-
-#Set UAC level to high
-Import-Module . \SwitchUACLevel.psm1
-Get-Command -Module SwitchUACLevel
-Set-UACLevel 3
+#secedit /configure /db %temp%\temp.sdb /cfg 5.23.18.inf ############ WIP
 
 #Restricts PowerShell scripts
-#Set-ExecutionPolicy restricted
+Set-ExecutionPolicy restricted
