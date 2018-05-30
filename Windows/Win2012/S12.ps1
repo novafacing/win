@@ -1,6 +1,7 @@
 ﻿#Created by Zamanry, 05/2018
 
 #Import firewall
+#WARNING: This blocks Internet Explorer. Mozilla Firefox is installed later.
 Netsh advfirewall import "S12.wfw"
 Write-Host Firewall installed.
 
@@ -175,6 +176,17 @@ Remove-Item -path .\S12.WFW
 Remove-Item -path ..\S12.zip
 Remove-Item -path .\SwitchUACLevel.psm1
 Remove-Item -path .\hosts
+
+#Install .MSI Mozilla Firefox here
+Start-Process "msiexec.exe" -Wait -NoNewWindow
+
+#Disable features
+dism /online /Disable-Feature /FeatureName: WindowsServerBackupSnapin
+dism /online /Disable-Feature /FeatureName: Printing-Client
+dism /online /Disable-Feature /FeatureName: Printing-Client-Gui
+dism /online /Disable-Feature /FeatureName: Internet-Explorer-Optional-amd64
+dism /online /Disable-Feature /FeatureName: Printing-XPSServices-Features
+dism /online /Disable-Feature /FeatureName: SmbDirect
 
 #Removes Windows Features
 Write-Host Removing PowerShell ISE
