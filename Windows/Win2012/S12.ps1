@@ -227,6 +227,16 @@ else
     Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" -Type DWORD -Name "chUseStrongCrypto" -Value 1
 }
 
+#Disable SMBv1
+Set-SmbServerConfiguration -EnableSMB1Protocol $false
+sc.exe config lanmanworkstation depend= bowser/mrxsmb20/nsi
+sc.exe config mrxsmb10 start= disabled
+
+#Disable SMBv2 & SMBv3
+Set-SmbServerConfiguration -EnableSMB2Protocol $false
+sc.exe config lanmanworkstation depend= bowser/mrxsmb10/nsi
+sc.exe config mrxsmb20 start= disabled
+
 #Create new Hosts file
 $ScriptLocation = Get-Location 
 Set-Location ..\..\..\..
