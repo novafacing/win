@@ -184,6 +184,9 @@ function DisableProtocol($Prtcrl)
     }
 }
 
+#Disable PCT 1.0
+DisableProtocol("PCT 1.0")
+
 #Disable SSL 2.0
 DisableProtocol("SSL 2.0")
 
