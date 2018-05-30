@@ -100,8 +100,8 @@ do
 }
 while ($CrntService -ne $NULL)
 
-#Start Windows Update service
-Start-Service wuauserv
+#Sets Windows Update service to automatic
+Set-Service wuauserv -StartupType Automatic
 
 #Disable unnecessary network components
 Write-Host Disabling network components.
