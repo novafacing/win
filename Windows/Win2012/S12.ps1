@@ -1,7 +1,6 @@
 ﻿#Created by Zamanry, 05/2018
 
 #Import firewall
-#WARNING: This blocks Internet Explorer. Mozilla Firefox is installed later.
 Netsh advfirewall import "S12.wfw"
 Write-Host Firewall installed.
 
@@ -139,14 +138,14 @@ Wmic recoveros set DebugInfoType = 0
 #Disable Remote Assistance
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 1
 
-#Show File Explorer hidden files
-Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Hidden" -Value 1
+#Show File Explorer hidden files (WIP)
 
-#Show File Explorer file extensions
-Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFilExt" -Value 0
 
-#Disable File Explorer Sharing Wizard
-Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "SharingWizardOn" -Value 0
+#Show File Explorer file extensions (WIP)
+
+
+#Disable File Explorer Sharing Wizard (WIP)
+
 
 #Disables Jump List items in Taskbar Properties
 Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_JumpListItems" -Value 0
@@ -245,15 +244,18 @@ Write-Host Set UAC level to High
 #Enables custom local security policies
 Secedit /configure /db %temp%\temp.sdb /cfg S12.inf
 
+#Install .MSI Mozilla Firefox, Wireshark, MalwareBytes, CCleaner (WIP)
+
+
+#Extract SysInternals (WIP)
+
+
 #Cleaning up
 Remove-Item -path .\S12.INF
 Remove-Item -path .\S12.WFW
 Remove-Item -path ..\S12.zip
 Remove-Item -path .\SwitchUACLevel.psm1
 Remove-Item -path .\hosts
-
-#Install .MSI Mozilla Firefox here
-#Start-Process "msiexec.exe" -Wait -NoNewWindow
 
 #Disable features
 Write-Host Removing uneccessary programs 
@@ -266,6 +268,14 @@ dism /online /Disable-Feature /FeatureName: SmbDirect
 
 #Removes Windows Features
 Remove-WindowsFeature -Name PowerShell-ISE
+
+#New standard user
+Write-Warning "Enter password for new user account below."
+$Password = Read-Host -AsSecureString
+Net User Milton $Password /Add /Y
+
+#Clear PowerShell command history
+Clear-History
 
 #Restricts PowerShell scripts
 Set-ExecutionPolicy restricted
