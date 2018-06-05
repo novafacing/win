@@ -7,6 +7,12 @@ Write-Host Firewall installed.
 #Flush DNS
 Ipconfig /flushdns
 
+#Flush Netsh caches
+Netsh interface ipv4 delete arpcache
+Netsh interface ipv4 delete desinationcache
+Netsh interface ipv4 delete neighbors
+Netsh interface ipv4 delete winsservers
+
 #Disable & stop services
 Write-Host Disabling/stopping services.
 $Services = 
@@ -42,10 +48,10 @@ $Services =
 'IEEtwCollectorService',
 'iphlpsvc',
 'PolicyAgent',
-'ltdsvc',
+'lltdsvc',
 'Mcx2Svc',
-'clr_optimization_v2.0.507s7_32',
-'clr_optimization_v4.0.03019_32',
+'clr_optimization_v2.0.50727_32',
+'clr_optimization_v4.0.30319_32',
 'MSiSCSI',
 'swprv',
 'MMCSS',
@@ -55,7 +61,6 @@ $Services =
 'NetTcpPortSharing',
 'Netlogon',
 'napagent',
-'Netman',
 'CscService',
 'WPCSvc',
 'PNRPsvc',
@@ -116,38 +121,31 @@ $Services =
 'Wlansvc',
 'wmiApSrv',
 'LanmanWorkstation',
-'WwanSvc'
+'WwanSvc',
+'PerfHost'
 
 $Index = 0
 $CrntService = $Services[$Index]
 
 do {
-    if (Get-Service $CrntService -ErrorAction SilentlyContinue) {        
-        Set-Service $CrntService -StartupType Disabled
-        Stop-Service $CrntService -Force
-    }
-    else {
-        Write-Host "$CrntService not found."
-    }
-    $Index++
-    $CrntService = $Services[$Index]
-
+	if (Get-Service $CrntService -ErrorAction SilentlyContinue) {
+		Set-Service $CrntService -StartupType Disabled
+		Stop-Service $CrntService -Force
+	}
+	else {
+		Write-Host "$CrntService not found."
+	}
+	$Index++
+	$CrntService = $Services[$Index]
 } while ($CrntService -ne $NULL)
 
-#Sets Windows Update service to automatic
+#Sets Windows Update service and dependencies to automatic
 Set-Service wuauserv -StartupType Automatic
 Set-Service BITS -StartupType Automatic
 Set-Service TrustedInstaller -StartupType Automatic
 
-#Disable unnecessary network components
-Write-Host Disabling network components.
-Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_tcpip6'
-Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_rspndr'
-Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_lltdio'
-Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_implat'
-Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_msclient'
-Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_pacer'
-Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_server'
+#Disable all network components except IPv4
+ncpa.cpl
 
 #Disable IPv6 completely
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services" -Name "DisabledComponents" -Type DWORD -Value "0xFF" -Force 
@@ -164,78 +162,70 @@ $NIC = [wmiclass]'Win32_NetworkAdapterConfiguration'
 $NIC.enablewins($false,$false)
 
 #Disables IGMP
-Netsh interface ipv4 set global mldlevel = none
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "IGMPLevel" -Type DWORD -Value "0" -Force 
 
 #Disable memory dumps
-Wmic recoveros set DebugInfoType = 0
+Get-WmiObject -Class Win32_OSRecoveryConfiguration -EnableAllPrivileges | >> Set-WmiInstance -Arguments @{DebugInfoType = 0}
 
-#Disable Remote Assistance
+#Disable Remote Desktop
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 1
 
-function DisableProtocol() {
-    if (Test-Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol" == false) {
-        New-Item -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols" -name "$Protocol" -Type Directory
-        New-Item -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol" -name "Client" -Type Directory
-        New-Item -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol" -name "Server" -Type Directory
-    }
-    else if (Test-Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol\Client" == false) {
-        New-Item -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol" -name "Client" -Type Directory
-    }
-    else if (Test-Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol\Server" == false) {
-        New-Item -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol" -name "Server" -Type Directory
-    }
-    else {
-        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol\Client" -Type DWORD -Name "DisabledByDefault" -Value 1
-        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol\Client" -Type DWORD -Name "Enabled" -Value 0
-        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol\Server" -Type DWORD -Name "DisabledByDefault" -Value 1
-        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol\Server" -Type DWORD -Name "Enabled" -Value 0
-    }
+#Disable Remote Assistance
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Remote Assistance" -Name "fAllowToGetHelp" -Type DWORD –Value 0
+
+#Internet Options:
+Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings\CACHE" -Type DWORD -Name "Persistent" -Value 0 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\Internet Explorer\Main" -Type DWORD -Name "Enable Browser Extensions" -Value 0 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\Internet Explorer\Main" -Type DWORD -Name "DoNotTrack" -Value 1 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Type DWORD -Name "WarnonZoneCrossing" -Value 1 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Type DWORD -Name "WarnonBadCertRecving" -Value 1 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\Internet Explorer\PhishingFilter" -Type DWORD -Name "Enable" -Value 1 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\Internet Explorer\Main\FeatureControl\FEATURE_LOCALMACHINE_LOCKDOWN" -Type DWORD -Name "iexplore.exe" -Value 1 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "" -Type DWORD -Name "" -Value 1 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "" -Type DWORD -Name "" -Value 1 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "" -Type DWORD -Name "" -Value 1 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "" -Type DWORD -Name "" -Value 1 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "" -Type DWORD -Name "" -Value 1 -ErrorAction SilentlyContinue
+
+#Disable outdated protocols
+$Path = "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols"
+function DisableProtocol {
+	New-Item -Path "$Path" -name "$Protocol" -Type Directory -ErrorAction SilentlyContinue
+	$Path = "$Path\$Protocol"
+	New-Item -Path "$Path" -name "Client" -Type Directory -ErrorAction SilentlyContinue
+	New-Item -Path "$Path" -name "Server" -Type Directory -ErrorAction SilentlyContinue
+	Set-ItemProperty -Path "$Path\Client" -Type DWORD -Name "DisabledByDefault" -Value 1 -ErrorAction SilentlyContinue
+	Set-ItemProperty -Path "$Path\Client" -Type DWORD -Name "Enabled" -Value 0 -ErrorAction SilentlyContinue
+	Set-ItemProperty -Path "$Path\Server" -Type DWORD -Name "DisabledByDefault" -Value 1 -ErrorAction SilentlyContinue
+	Set-ItemProperty -Path "$Path\Server" -Type DWORD -Name "Enabled" -Value 0 -ErrorAction SilentlyContinue
 }
 
-#Disable PCT 1.0
-$Protocol = "PCT 1.0"
-DisableProtocol()
+$Protocols = 'PCT 1.0', 'SSL 2.0', 'SSL 3.0', 'TLS 1.0', 'TLS 1.1'
+$Index = 0
+$Protocol = $Protocols[$Index]
 
-#Disable SSL 2.0
-$Protocol = "SSL 2.0"
-DisableProtocol()
-
-#Disable SSL 3.0
-$Protocol = "SSL 3.0"
-DisableProtocol()
-
-#Disable TLS 1.0
-$Protocol = "TLS 1.0"
-DisableProtocol()
-
-#Disable TLS 1.1
-$Protocol = "TLS 1.1"
-DisableProtocol()
+do {
+	DisableProtocol
+	$Index++
+	$Protocol = $Protocols[$Index]
+} while ($Protocol -ne $NULL)
 
 #Enable TLS 1.2 (No other SSL or TLS versions are enabled)
 $Protocol = "TLS 1.2"
-if (Test-Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol" == false) {
-    New-Item -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols" -name "$Protocol" -Type Directory
-    New-Item -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol" -name "Client" -Type Directory
-    New-Item -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol" -name "Server" -Type Directory
-}
-else if (Test-Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol\Client" == false) {
-    New-Item -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol" -name "Client" -Type Directory
-}
-else if (Test-Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol\Server" == false) {
-    New-Item -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$Protocol" -name "Server" -Type Directory
-}
-else {
-    Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocol\$Protocol\Client" -Type DWORD -Name "DisabledByDefault" -Value 0
-    Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocol\$Protocol\Client" -Type DWORD -Name "Enabled" -Value 1
-    Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocol\$Protocol\Server" -Type DWORD -Name "DisabledByDefault" -Value 0
-    Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocol\$Protocol\Server" -Type DWORD -Name "Enabled" -Value 1
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp" -Type DWORD -Name "DefaultSecureProtocols" -Value 0x00000800
-    
-    #Force .NET Framework 4.0 to use TLS 1.2
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319" -Type DWORD -Name "chUseStrongCrypto" -Value 1
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" -Type DWORD -Name "chUseStrongCrypto" -Value 1
-}
+New-Item -Path "$Path" -name "$Protocol" -Type Directory -ErrorAction SilentlyContinue
+New-Item -Path "$Path" -name "Client" -Type Directory -ErrorAction SilentlyContinue
+New-Item -Path "$Path" -name "Server" -Type Directory -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path\Client" -Type DWORD -Name "DisabledByDefault" -Value 0 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path\Client" -Type DWORD -Name "Enabled" -Value 1 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path\Server" -Type DWORD -Name "DisabledByDefault" -Value 0 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path\Server" -Type DWORD -Name "Enabled" -Value 1 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp" -Type DWORD -Name "DefaultSecureProtocols" -Value 0x800 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp" -Type DWORD -Name "DefaultSecureProtocols" -Value 0x800 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Type DWORD -Name "SecureProtocols" -Value 0x800 -ErrorAction SilentlyContinue
+
+#Force .NET Framework 4.0 to use TLS 1.2
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319" -Type DWORD -Name "chUseStrongCrypto" -Value 1 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" -Type DWORD -Name "chUseStrongCrypto" -Value 1 -ErrorAction SilentlyContinue
 
 #Disable SMBv1
 Set-SmbServerConfiguration -EnableSMB1Protocol $false
@@ -254,14 +244,14 @@ $DriveLetter = Get-Location
 Move-Item -path $ScriptLocation\hosts -destination $DriveLetter\Windows\system32\drivers\etc\hosts -force
 Set-Location $ScriptLocation
 
-#Set UAC level to high
+#Set UAC level to High
 Import-Module .\SwitchUACLevel.psm1
 Get-Command -Module SwitchUACLevel
 Set-UACLevel 3
 Write-Host Set UAC level to High
 
 #Enables custom local security policies
-Secedit /configure /db %temp%\temp.sdb /cfg S12.inf
+Secedit /configure /db %temp%\temp.sdb /cfg Win7.inf
 
 #Install .MSI Mozilla Firefox, Wireshark, MalwareBytes, CCleaner (WIP)
 
@@ -270,11 +260,10 @@ Secedit /configure /db %temp%\temp.sdb /cfg S12.inf
 
 
 #Cleaning up
-Remove-Item -path .\S12.INF
-Remove-Item -path .\S12.WFW
-Remove-Item -path ..\S12.zip
+Remove-Item -path .\Win7.INF
+Remove-Item -path .\Win7.WFW
+Remove-Item -path ..\Win7.zip
 Remove-Item -path .\SwitchUACLevel.psm1
-Remove-Item -path .\hosts
 
 #Disable features
 dism /online /Disable-Feature /FeatureName: Internet-Explorer-Optional-amd64
@@ -293,8 +282,9 @@ dism /online /Disable-Feature /FeatureName: WindowsGadgetPlatform
 
 #New standard user
 Write-Warning "Enter password for new user account below."
-$Password = Read-Host -AsSecureString
-Net User Milton $Password /Add /Y
+$Passverb = Read-Host -AsSecureString
+Net User Charles $Passverb /Add /Y
+$Passverb = $NULL
 
 #Clear PowerShell command history
 Clear-History
