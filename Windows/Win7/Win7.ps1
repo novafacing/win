@@ -47,7 +47,6 @@ $Services =
 'clr_optimization_v2.0.507s7_32',
 'clr_optimization_v4.0.03019_32',
 'MSiSCSI',
-'NisSrv',
 'swprv',
 'MMCSS',
 'NetMsmqActivator',
@@ -63,11 +62,9 @@ $Services =
 'p2psvc',
 'p2pimsvc',
 'pla',
-'PlugPlay',
 'IPBusEnum',
 'PNRPAutoReg',
 'WPDBusEnum',
-'Power',
 'Spooler',
 'wercplsupport',
 'PcaSvc',
@@ -94,7 +91,7 @@ $Services =
 'TabletInputService',
 'lmhosts',
 'tapiSrv',
-'ipnphost',
+'upnphost',
 'VSS',
 'WebClient',
 'WatAdminSvc',
@@ -130,7 +127,7 @@ do {
         Stop-Service $CrntService -Force
     }
     else {
-        Write-Host "$CrntService not found"
+        Write-Host "$CrntService not found."
     }
     $Index++
     $CrntService = $Services[$Index]
