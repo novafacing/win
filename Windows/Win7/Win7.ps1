@@ -147,6 +147,7 @@ $NIC.enablewins($false,$false)
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "IGMPLevel" -Type "REG_DWORD" -Value "0" #Disable IGMP
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 1 #Disable Remote Desktop
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Remote Assistance" -Name "fAllowToGetHelp" -Type "REG_DWORD" –Value 0 #Disable Remote Assistance
+$NIC = $NULL
 
 #Flush caches (DNS, ARP, NetBIOS, routes, hosts):
 Ipconfig /flushdns
@@ -210,7 +211,7 @@ Set-ItemProperty -Path "$Path1" -Type "REG_DWORD" -Name "WarnonZoneCrossing" -Va
 Set-ItemProperty -Path "$Path1" -Type "REG_DWORD" -Name "WarnOnPostRedirect" -Value 1
 $Path1, $Path2 = $NULL
 
-#Disable outdated protocols
+#Disable outdated protocols:
 Write-Host "Disabling PCT/SSL/TLS outdated protocols."
 $Path = "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols"
 function DisableProtocol {
