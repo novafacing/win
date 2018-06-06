@@ -114,10 +114,10 @@ $NIC.SetDynamicDNSRegistration($false)
 $NIC.SetTcpipNetbios(2) #Disable NetBIOS over TCP/IP
 $NIC = [wmiclass]'Win32_NetworkAdapterConfiguration' #Disable LMHosts lookup
 $NIC.enablewins($false,$false)
-Set-ItemProperty -Path "HKLM:\Software\Microsoft\ServerManager" -Name "DoNotOpenServerManagerAtLogon" -Type "REG_DWORD" -Value "0x1" –Force #Prevent Server Manager from opening at startup
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "IGMPLevel" -Type "REG_DWORD" -Value "0" #Disable IGMP
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 1 #Disable Remote Desktop
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Remote Assistance" -Name "fAllowToGetHelp" -Type "REG_DWORD" –Value 0 #Disable Remote Assistance
+$NIC = $NULL
 
 #Flush caches (DNS, ARP, NetBIOS, routes, hosts):
 Ipconfig /flushdns
@@ -133,19 +133,18 @@ Set-Location $Path
 $DriveLetter = $NULL
 
 Wmic recoveros set DebugInfoType = 0 #Disable memory dumps
+Set-ItemProperty -Path "HKLM:\Software\Microsoft\ServerManager" -Name "DoNotOpenServerManagerAtLogon" -Type "REG_DWORD" -Value "0x1" –Force #Prevent Server Manager from opening at startup
 
 #Enable/Disable File Explorer Folder Options:
 Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Type "REG_DWORD" -Name "Hidden" -Value 1 #Enable hidden files
 Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Type "REG_DWORD" -Name "HideFileExt" -Value 0 #Enable file extensions
 Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Type "REG_DWORD" -Name "SharingWizardOn" -Value 0 #Disable Sharing Wizard
 
-#Disables Jump List items in Taskbar Properties
-Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_JumpListItems" -Value 0
+#Disable Taskbar Properties:
+Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_TrackProgs" -Value 0 #Disable Jump List items
+Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_TrackDocs" -Value 0 #Disabl recent documents
 
-#Disables tracking of recent documents in Taskbar Properties
-Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_TrackDocs" -Value 0
-
-#Disable outdated protocols
+#Disable outdated protocols:
 Write-Host "Disabling PCT/SSL/TLS outdated protocols."
 $Path = "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols"
 function DisableProtocol {
