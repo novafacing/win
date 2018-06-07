@@ -97,7 +97,7 @@ do {
 #Sets Windows Update service to automatic
 Write-Host "Enabling Windows Update."
 Set-Service "wuauserv" -StartupType "Automatic"
-Set-Service "BITS" -StartupType "Automatic"
+Set-Service "RpcSs" -StartupType "Automatic"
 
 #Disable unnecessary network connections:
 Write-Host "Disabling network components."
@@ -134,11 +134,11 @@ $DriveLetter = $NULL
 
 Wmic recoveros set DebugInfoType = 0 #Disable memory dumps
 Set-ItemProperty -Path "HKLM:\Software\Microsoft\ServerManager" -Name "DoNotOpenServerManagerAtLogon" -Type "REG_DWORD" -Value "0x1" –Force #Prevent Server Manager from opening at startup
-
+ 
 #Enable/Disable File Explorer Folder Options:
-Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Type "REG_DWORD" -Name "Hidden" -Value 1 #Enable hidden files
-Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Type "REG_DWORD" -Name "HideFileExt" -Value 0 #Enable file extensions
-Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Type "REG_DWORD" -Name "SharingWizardOn" -Value 0 #Disable Sharing Wizard
+Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Type "REG_DWORD" -Name "Hidden" -Value 1
+Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Type "REG_DWORD" -Name "HideFileExt" -Value 0
+Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Type "REG_DWORD" -Name "SharingWizardOn" -Value 0
 
 #Disable Taskbar Properties:
 Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_TrackProgs" -Value 0 #Disable Jump List items
