@@ -97,7 +97,7 @@ do {
 #Sets Windows Update service to automatic
 Write-Host "Enabling Windows Update."
 Set-Service "wuauserv" -StartupType "Automatic"
-Set-Service "RpcSs" -StartupType "Automatic"
+Set-Service "BITS" -StartupType "Automatic"
 
 #Disable unnecessary network connections:
 Write-Host "Disabling network components."
@@ -108,41 +108,40 @@ Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_implat'
 Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_msclient'
 Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_pacer'
 Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_server'
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services" -Name "DisabledComponents" -Type "REG_DWORD" -Value "0xFF" -Force #Disable IPv6 completely
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services" -Name "DisabledComponents" -Value "0xFF" -Force #Disable IPv6 completely
 $NIC = Get-WmiObject Win32_NetworkAdapterConfiguration -filter "ipenabled = 'true'" #Disable 'Register this connection's addresses in DNS'
 $NIC.SetDynamicDNSRegistration($false)
 $NIC.SetTcpipNetbios(2) #Disable NetBIOS over TCP/IP
 $NIC = [wmiclass]'Win32_NetworkAdapterConfiguration' #Disable LMHosts lookup
 $NIC.enablewins($false,$false)
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "IGMPLevel" -Type "REG_DWORD" -Value "0" #Disable IGMP
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "IGMPLevel" -Value "0" #Disable IGMP
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 1 #Disable Remote Desktop
-Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Remote Assistance" -Name "fAllowToGetHelp" -Type "REG_DWORD" –Value 0 #Disable Remote Assistance
-$NIC = $NULL
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Remote Assistance" -Name "fAllowToGetHelp" –Value 0 #Disable Remote Assistance
 
 #Flush caches (DNS, ARP, NetBIOS, routes, hosts):
 Ipconfig /flushdns
 Netsh interface ipv4 delete arpcache
 Netsh interface ipv4 delete desinationcache
 Netsh interface ipv4 delete neighbors
-Netsh interface ipv4 delete winsservers
-$Path = Get-Location
+Netsh interface ipv4 delete winsservers "Local Area Connection" all
+Push-Location
 Set-Location "..\..\..\.."
 $DriveLetter = Get-Location
-Move-Item -path "$Path\hosts" -destination "$DriveLetter\Windows\system32\drivers\etc\hosts" -force
-Set-Location $Path
-$DriveLetter = $NULL
+Pop-Location
+Move-Item -path ".\hosts" -destination "$DriveLetter\Windows\system32\drivers\etc\hosts" -force
 
+#Misc.
 Wmic recoveros set DebugInfoType = 0 #Disable memory dumps
-Set-ItemProperty -Path "HKLM:\Software\Microsoft\ServerManager" -Name "DoNotOpenServerManagerAtLogon" -Type "REG_DWORD" -Value "0x1" –Force #Prevent Server Manager from opening at startup
- 
+Set-ItemProperty -Path "HKLM:\Software\Microsoft\ServerManager" -Name "DoNotOpenServerManagerAtLogon" -Value "0x1" –Force #Prevent Server Manager from opening at startup
+
 #Enable/Disable File Explorer Folder Options:
-Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Type "REG_DWORD" -Name "Hidden" -Value 1
-Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Type "REG_DWORD" -Name "HideFileExt" -Value 0
-Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Type "REG_DWORD" -Name "SharingWizardOn" -Value 0
+Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Name "Hidden" -Value 1 #Enable hidden files
+Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Name "HideFileExt" -Value 0 #Enable file extensions
+Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\CurrentVersion\Advanced" -Name "SharingWizardOn" -Value 0 #Disable Sharing Wizard
 
 #Disable Taskbar Properties:
-Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_TrackProgs" -Value 0 #Disable Jump List items
-Set-ItemProperty -Path "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_TrackDocs" -Value 0 #Disabl recent documents
+Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_TrackProgs" -Value 0 #Disable Jump List items
+Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_TrackDocs" -Value 0 #Disabl recent documents
 
 #Disable outdated protocols:
 Write-Host "Disabling PCT/SSL/TLS outdated protocols."
@@ -152,10 +151,10 @@ function DisableProtocol {
     $Path = "$Path\$Protocol"
     New-Item -Path "$Path" -name "Client" -Type "Directory"
     New-Item -Path "$Path" -name "Server" -Type "Directory"
-    Set-ItemProperty -Path "$Path\Client" -Type "REG_DWORD" -Name "DisabledByDefault" -Value 1
-    Set-ItemProperty -Path "$Path\Client" -Type "REG_DWORD" -Name "Enabled" -Value 0
-    Set-ItemProperty -Path "$Path\Server" -Type "REG_DWORD" -Name "DisabledByDefault" -Value 1
-    Set-ItemProperty -Path "$Path\Server" -Type "REG_DWORD" -Name "Enabled" -Value 0
+    Set-ItemProperty -Path "$Path\Client" -Name "DisabledByDefault" -Value 1
+    Set-ItemProperty -Path "$Path\Client" -Name "Enabled" -Value 0
+    Set-ItemProperty -Path "$Path\Server" -Name "DisabledByDefault" -Value 1
+    Set-ItemProperty -Path "$Path\Server" -Name "Enabled" -Value 0
 }
 
 $Protocols = 'PCT 1.0', 'SSL 2.0', 'SSL 3.0', 'TLS 1.0', 'TLS 1.1'
@@ -172,35 +171,35 @@ $Protocol = "TLS 1.2"
 New-Item -Path "$Path" -name "$Protocol" -Type "Directory"
 New-Item -Path "$Path" -name "Client" -Type "Directory"
 New-Item -Path "$Path" -name "Server" -Type "Directory"
-Set-ItemProperty -Path "$Path\Client" -Type "REG_DWORD" -Name "DisabledByDefault" -Value 0
-Set-ItemProperty -Path "$Path\Client" -Type "REG_DWORD" -Name "Enabled" -Value 1
-Set-ItemProperty -Path "$Path\Server" -Type "REG_DWORD" -Name "DisabledByDefault" -Value 0
-Set-ItemProperty -Path "$Path\Server" -Type "REG_DWORD" -Name "Enabled" -Value 1
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp" -Type "REG_DWORD" -Name "DefaultSecureProtocols" -Value "0x800"
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp" -Type "REG_DWORD" -Name "DefaultSecureProtocols" -Value "0x800"
-Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Type "REG_DWORD" -Name "SecureProtocols" -Value "0x800"
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319" -Type "REG_DWORD" -Name "chUseStrongCrypto" -Value 1
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" -Type "REG_DWORD" -Name "chUseStrongCrypto" -Value 1
+Set-ItemProperty -Path "$Path\Client" -Name "DisabledByDefault" -Value 0
+Set-ItemProperty -Path "$Path\Client" -Name "Enabled" -Value 1
+Set-ItemProperty -Path "$Path\Server" -Name "DisabledByDefault" -Value 0
+Set-ItemProperty -Path "$Path\Server" -Name "Enabled" -Value 1
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp" -Name "DefaultSecureProtocols" -Value "0x800"
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp" -Name "DefaultSecureProtocols" -Value "0x800"
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Name "SecureProtocols" -Value "0x800"
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319" -Name "chUseStrongCrypto" -Value 1
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" -Name "chUseStrongCrypto" -Value 1
 $Path = $NULL
 
 #Disable SMBv1, v2, and v3 (Unnecessary without domain)
 Write-Host "Disabling all SMB versions."
 Set-SmbServerConfiguration -EnableSMB1Protocol $false
-Sc.exe config lanmanworkstation depend = bowser/mrxsmb20/nsi
-Sc.exe config mrxsmb10 start = disabled
+Sc.exe config lanmanworkstation depend= bowser/mrxsmb20/nsi
+Sc.exe config mrxsmb10 start= disabled
 Set-SmbServerConfiguration -EnableSMB2Protocol $false
-Sc.exe config lanmanworkstation depend = bowser/mrxsmb10/nsi
-Sc.exe config mrxsmb20 start = disabled
+Sc.exe config lanmanworkstation depend= bowser/mrxsmb10/nsi
+Sc.exe config mrxsmb20 start= disabled
 
 #Set UAC level to High.
 Write-Host "Setting UAC level to High."
-Import-Module ".\SwitchUACLevel.psm1"
-Get-Command -Module "SwitchUACLevel"
-Set-UACLevel 3
+Set-ItemProperty -path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Type DWORD -Name "ConsentPromptBehaviorAdmin" -Value 2
+Set-ItemProperty -path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Type DWORD -Name "PromptOnSecureDesktop" -Value 1
 
 #Enable a custom local security policy
 Write-Host "Setting custom local security policy."
-Secedit /configure /db %temp%\temp.sdb /cfg S12.inf
+Secedit /import /cfg S12.inf /db S12.sdb
+Secedit /configure /db S12.sdb
 
 #Install .MSI Mozilla Firefox, Wireshark, MalwareBytes, CCleaner (WIP)
 
@@ -210,10 +209,10 @@ Stop-Service "msiserver" -Force
 
 #Cleaning up files
 Write-Host "Cleaning up files."
-Remove-Item -path ".\S12.INF"
-Remove-Item -path ".\S12.WFW"
-Remove-Item -path "..\S12.zip"
-Remove-Item -path ".\SwitchUACLevel.psm1"
+Remove-Item -path ".\S12.INF" -ErrorAction SilentlyContinue
+Remove-Item -path ".\S12.SDB" -ErrorAction SilentlyContinue
+Remove-Item -path ".\S12.WFW" -ErrorAction SilentlyContinue
+Remove-Item -path "..\S12.ZIP" -ErrorAction SilentlyContinue
 
 #Disable features
 Write-Host Removing uneccessary features.
@@ -226,17 +225,28 @@ dism /online /Disable-Feature /FeatureName: WindowsServerBackupSnapin
 Remove-WindowsFeature -Name PowerShell-ISE
 
 #Create a standard user
-Write-Warning "Creating a standard user. Enter a username that is not Admin, Guest, Root, etc."
-$Userverb = Read-Host
-Write-Warning "Enter a secure password for the account below. Don't worry, it's encrypted."
-$Passverb = Read-Host -AsSecureString
-Net User $Userverb $Passverb /Add /Y
-$Userverb, $Passverb = $NULL
+Write-Warning "Creating a new user. DO NOT name them Admin, Guest, Root, etc."
+$Userverb = Read-Host -Prompt "Enter a new username"
+$ctr = 0
+do {
+	if ($ctr -gt 0) {
+		Write-Host " "
+		Write-Warning "Passwords did not match."
+	}
+	$Passverb1 = Read-Host -Prompt "Enter password"-AsSecureString
+	$Passverb2 = Read-Host -Prompt "Re-enter password" -AsSecureString
+	$ctr++
+	If (([Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($Passverb1))) -eq ([Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($Passverb2)))) {
+		$Matched = $True
+	}
+} while ($Matched -ne $True)
+Net User $Userverb $Passverb1 /Add /Y
+$Userverb, $Passverb1, $Passverb2 = $NULL
+
+Write-Warning "Please restart once all features have been removed."
 
 #Clear PowerShell command history
 Clear-History
-
-Write-Warning "Please restart once all features have been removed."
 
 #Restricts PowerShell scripts
 Set-ExecutionPolicy restricted
