@@ -1,5 +1,5 @@
 #Created by Zamanry, 06/2018.
-#Fully tested and functioning as of 6/11/18.
+#Fully functioning as of 06/12/18.
 
 #Import Windows Firewall
 Write-Host "Installing firewall."
@@ -140,15 +140,15 @@ Set-Service "BITS" -StartupType "Automatic"
 Set-Service "TrustedInstaller" -StartupType "Automatic"
 
 #Disable unneccessary network connections:
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services" -Name "DisabledComponents" -Type DWORD -Value "0xFF" #Disable IPv6 completely
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services" -Name "DisabledComponents" -Type "DWORD" -Value "0xFF" #Disable IPv6 completely
 $NIC = Get-WmiObject Win32_NetworkAdapterConfiguration -filter "ipenabled = 'true'" #Disable 'Register this connection's addresses in DNS'
 $NIC.SetDynamicDNSRegistration($false)
 $NIC.SetTcpipNetbios(2) #Disable NetBIOS over TCP/IP
 $NIC = [wmiclass]'Win32_NetworkAdapterConfiguration' #Disable LMHosts lookup
 $NIC.enablewins($false,$false)
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "IGMPLevel" -Type DWORD -Value "0" #Disable IGMP
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "IGMPLevel" -Type "DWORD" -Value "0" #Disable IGMP
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 1 #Disable Remote Desktop
-Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Remote Assistance" -Name "fAllowToGetHelp" -Type DWORD –Value 0 #Disable Remote Assistance
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Remote Assistance" -Name "fAllowToGetHelp" -Type "DWORD" –Value 0 #Disable Remote Assistance
 
 #Flush caches (DNS, ARP, NetBIOS, routes, hosts):
 Ipconfig /flushdns
@@ -162,67 +162,67 @@ $DriveLetter = Get-Location
 Pop-Location
 Move-Item -path ".\hosts" -destination "$DriveLetter\Windows\system32\drivers\etc\hosts" -force
 
-Get-WmiObject -Class Win32_OSRecoveryConfiguration -EnableAllPrivileges | Set-WmiInstance -Arguments @{DebugInfoType = 0} #Disable memory dumps
+#Misc.
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control" -Name "CrashControl" -Type "DWORD" -Value "0x0" #Disable memory dumps
 
 #Enable/Disable File Explorer Folder Options:
-Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Hidden" -Value 1
-Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value 0
-Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "SharingWizardOn" -Value 0
+Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Hidden" -Type "DWORD" -Value 1
+Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Type "DWORD" -Value 0
+Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "SharingWizardOn" -Type "DWORD" -Value 0
 
 #Enable/Disable Internet Options:
 Write-Host "Enabling/Disabling Internet Options."
-#General tab
-$Path1 = "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
-$Path2 = "Registry::HKEY_CURRENT_USER\Software\Microsoft\Internet Explorer"
-Set-ItemProperty -Path "$Path2\Main" -Type String -Name "Start Page" -Value "https://start.duckduckgo.com/"
-New-Item -Path "$Path2" -name "Privacy" -Type "Directory" -ErrorAction SilentlyContinue
-Set-ItemProperty -Path "$Path2\Privacy" -Name "ClearBrowsingHistoryOnExit" -Value 1
-Set-ItemProperty -Path "$Path1" -Name "SyncMode5" -Value 3
-New-Item -Path "$Path1" -name "Url History" -Type "Directory" -ErrorAction SilentlyContinue
-Set-ItemProperty -Path "$Path1\Url History" -Name "DaysToKeep" -Value 0
-New-Item -Path "$Path2" -name "BrowserStorage" -Type "Directory" -ErrorAction SilentlyContinue
-New-Item -Path "$Path2\BrowserStorage" -name "IndexedDB" -Type "Directory" -ErrorAction SilentlyContinue
-Set-ItemProperty -Path "$Path2\BrowserStorage\IndexedDB" -Name "AllowWebsiteDatabases" -Value 0
-New-Item -Path "$Path2\BrowserStorage" -name "AppCache" -Type "Directory" -ErrorAction SilentlyContinue
-Set-ItemProperty -Path "$Path2\BrowserStorage\AppCache" -Name "AllowWebsiteCaches" -Value 0
-Set-ItemProperty -Path "$Path2\TabbedBrowsing" -Name "WarnOnClose" -Value 0
-Set-ItemProperty -Path "$Path2\TabbedBrowsing" -Name "NetTabPageShow" -Value 1
+$Path = "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+$Path1 = "Registry::HKEY_CURRENT_USER\Software\Microsoft\Internet Explorer"
+Set-ItemProperty -Path "$Path1\Main" -Name "Start Page" -Type "String" -Value "https://start.duckduckgo.com/"
+New-Item -Path "$Path1" -Name "Privacy" -Type "Directory" -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path1\Privacy" -Name "ClearBrowsingHistoryOnExit" -Type "DWORD" -Value 1
+Set-ItemProperty -Path "$Path" -Name "SyncMode5" -Type "DWORD" -Value 3
+New-Item -Path "$Path" -Name "Url History" -Type "Directory" -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path\Url History" -Name "DaysToKeep" -Type "DWORD" -Value 0
+New-Item -Path "$Path1" -Name "BrowserStorage" -Type "Directory" -ErrorAction SilentlyContinue
+New-Item -Path "$Path1\BrowserStorage" -Name "IndexedDB" -Type "Directory" -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path1\BrowserStorage\IndexedDB" -Name "AllowWebsiteDatabases" -Type "DWORD" -Value 0
+New-Item -Path "$Path1\BrowserStorage" -Name "AppCache" -Type "Directory" -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path1\BrowserStorage\AppCache" -Name "AllowWebsiteCaches" -Type "DWORD" -Value 0
+Set-ItemProperty -Path "$Path1\TabbedBrowsing" -Name "WarnOnClose" -Type "DWORD" -Value 0
+Set-ItemProperty -Path "$Path1\TabbedBrowsing" -Name "NetTabPageShow" -Type "DWORD" -Value 1
 #Privacy Tab
-Set-ItemProperty -Path "$Path2\New Windows" -Name "PopupMgr" -Value 1
+Set-ItemProperty -Path "$Path1\New Windows" -Name "PopupMgr" -Type "DWORD" -Value 1
 #Programs Tab
-New-Item -Path "$Path1" -name "Activities" -Type "Directory" -ErrorAction SilentlyContinue
-New-Item -Path "$Path1\Activities" -name "Email" -Type "Directory" -ErrorAction SilentlyContinue
-New-Item -Path "$Path1\Activities\Email" -name "live.com" -Type "Directory" -ErrorAction SilentlyContinue
-Set-ItemProperty -Path "$Path1\Activities\Email\live.com" -Name "Enabled" -Value 0
-New-Item -Path "$Path1\Activities" -name "Map" -Type "Directory" -ErrorAction SilentlyContinue
-New-Item -Path "$Path1\Activities\Map" -name "bing.com" -Type "Directory" -ErrorAction SilentlyContinue
-Set-ItemProperty -Path "$Path1\Activities\Map\bing.com" -Name "Enabled" -Value 0
-New-Item -Path "$Path1\Activities" -name "Translate" -Type "Directory" -ErrorAction SilentlyContinue
-New-Item -Path "$Path1\Activities\Translate" -name "microsofttranslator.com" -Type "Directory" -ErrorAction SilentlyContinue
-Set-ItemProperty -Path "$Path1\Activities\Translate\microsofttranslator.com" -Name "Enabled" -Value 0
+New-Item -Path "$Path" -Name "Activities" -Type "Directory" -ErrorAction SilentlyContinue
+New-Item -Path "$Path\Activities" -Name "Email" -Type "Directory" -ErrorAction SilentlyContinue
+New-Item -Path "$Path\Activities\Email" -Name "live.com" -Type "Directory" -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path\Activities\Email\live.com" -Name "Enabled" -Type "DWORD" -Value 0
+New-Item -Path "$Path\Activities" -Name "Map" -Type "Directory" -ErrorAction SilentlyContinue
+New-Item -Path "$Path\Activities\Map" -Name "bing.com" -Type "Directory" -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path\Activities\Map\bing.com" -Name "Enabled" -Type "DWORD" -Value 0
+New-Item -Path "$Path\Activities" -Name "Translate" -Type "Directory" -ErrorAction SilentlyContinue
+New-Item -Path "$Path\Activities\Translate" -Name "microsofttranslator.com" -Type "Directory" -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path\Activities\Translate\microsofttranslator.com" -Name "Enabled" -Type "DWORD" -Value 0
 #Advanced tab
-Set-ItemProperty -Path "$Path2\Main" -Type String -Name "DisableScriptDebuggerIE" -Value "yes"
-Set-ItemProperty -Path "$Path2\Main" -Type String -Name "Disable Script Debugger" -Value "yes"
-Set-ItemProperty -Path "$Path2\Recovery" -Name "AutoRecover" -Value 2
-Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\FTP" -Type String -Name "Use Web Based FTP" -Value "yes"
-Set-ItemProperty -Path "$Path2\Main" -Name "Enable Browser Extensions" -Value 0
-Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\FTP" -Type String -Name "Use PASV" -Value "no"
-Set-ItemProperty -Path "$Path1" -Name "EnableHttp1_1" -Value 1
-New-Item -Path "$Path2\Main" -name "FeatureControl" -Type "Directory" -ErrorAction SilentlyContinue
-New-Item -Path "$Path2\Main\FeatureControl" -name "FEATURE_LOCALMACHINE_LOCKDOWN" -Type "Directory" -ErrorAction SilentlyContinue
-Set-ItemProperty -Path "$Path2\Main\FeatureControl\FEATURE_LOCALMACHINE_LOCKDOWN" -Name "iexplore.exe" -Value 1
-Set-ItemProperty -Path "$Path2\Download" -Name "RunInvalid" -Value 0
-Set-ItemProperty -Path "$Path1" -Name "CertificateRevocation" -Value 1
-Set-ItemProperty -Path "$Path2\Download" -Type String -Name "CheckExeSignatures" -Value "yes"
-Set-ItemProperty -Path "$Path1\CACHE" -Name "Persistent" -Value 0
-Set-ItemProperty -Path "$Path2\Main" -Name "DOMStorage" -Value 0
-Set-ItemProperty -Path "$Path2\PhishingFilter" -Name "Enable" -Value 1
-Set-ItemProperty -Path "$Path1" -Name "EnforceP3PValidity" -Value 1
-Set-ItemProperty -Path "$Path2\Main" -Name "DoNotTrack" -Value 1
-Set-ItemProperty -Path "$Path1" -Name "WarnonBadCertRecving" -Value 1
-Set-ItemProperty -Path "$Path1" -Name "WarnonZoneCrossing" -Value 1
-Set-ItemProperty -Path "$Path1" -Name "WarnOnPostRedirect" -Value 1
-$Path1, $Path2 = $NULL
+Set-ItemProperty -Path "$Path1\Main" -Name "DisableScriptDebuggerIE" -Type "String" -Value "yes"
+Set-ItemProperty -Path "$Path1\Main" -Name "Disable Script Debugger" -Type "String" -Value "yes"
+Set-ItemProperty -Path "$Path1\Recovery" -Name "AutoRecover" -Type "DWORD" -Value 2
+Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\FTP" -Name "Use Web Based FTP" -Type "String" -Value "yes"
+Set-ItemProperty -Path "$Path1\Main" -Name "Enable Browser Extensions" -Type "DWORD" -Value 0
+Set-ItemProperty -Path "Registry::HKEY_CURRENT_USER\Software\Microsoft\FTP" -Name "Use PASV" -Type "String" -Value "no"
+Set-ItemProperty -Path "$Path" -Name "EnableHttp1_1" -Type "DWORD" -Value 1
+New-Item -Path "$Path1\Main" -Name "FeatureControl" -Type "Directory" -ErrorAction SilentlyContinue
+New-Item -Path "$Path1\Main\FeatureControl" -Name "FEATURE_LOCALMACHINE_LOCKDOWN" -Type "Directory" -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path1\Main\FeatureControl\FEATURE_LOCALMACHINE_LOCKDOWN" -Name "iexplore.exe" -Type "DWORD" -Value 1
+Set-ItemProperty -Path "$Path1\Download" -Name "RunInvalid" -Type "DWORD" -Value 0
+Set-ItemProperty -Path "$Path" -Name "CertificateRevocation" -Type "DWORD" -Value 1
+Set-ItemProperty -Path "$Path1\Download" -Name "CheckExeSignatures" -Type "String" -Value "yes"
+Set-ItemProperty -Path "$Path\CACHE" -Name "Persistent" -Type "DWORD" -Value 0
+Set-ItemProperty -Path "$Path1\Main" -Name "DOMStorage" -Type "DWORD" -Value 0
+Set-ItemProperty -Path "$Path1\PhishingFilter" -Name "Enable" -Type "DWORD" -Value 1
+Set-ItemProperty -Path "$Path" -Name "EnforceP3PValidity" -Type "DWORD" -Value 1
+Set-ItemProperty -Path "$Path1\Main" -Name "DoNotTrack" -Type "DWORD" -Value 1
+Set-ItemProperty -Path "$Path" -Name "WarnonBadCertRecving" -Type "DWORD" -Value 1
+Set-ItemProperty -Path "$Path" -Name "WarnonZoneCrossing" -Type "DWORD" -Value 1
+Set-ItemProperty -Path "$Path" -Name "WarnOnPostRedirect" -Type "DWORD" -Value 1
+$Path1 = $NULL
 
 #Disable features
 OptionalFeatures
@@ -231,14 +231,14 @@ OptionalFeatures
 Write-Host "Disabling PCT/SSL/TLS outdated protocols."
 $Path = "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols"
 function DisableProtocol {
-	New-Item -Path "$Path" -name "$Protocol" -Type Directory -ErrorAction SilentlyContinue
+	New-Item -Path "$Path" -Name "$Protocol" -Type Directory -ErrorAction SilentlyContinue
 	$Path = "$Path\$Protocol"
-	New-Item -Path "$Path" -name "Client" -Type "Directory" -ErrorAction SilentlyContinue
-	New-Item -Path "$Path" -name "Server" -Type "Directory" -ErrorAction SilentlyContinue
-	Set-ItemProperty -Path "$Path\Client" -Type DWORD -Name "DisabledByDefault" -Value 1
-	Set-ItemProperty -Path "$Path\Client" -Type DWORD -Name "Enabled" -Value 0
-	Set-ItemProperty -Path "$Path\Server" -Type DWORD -Name "DisabledByDefault" -Value 1
-	Set-ItemProperty -Path "$Path\Server" -Type DWORD -Name "Enabled" -Value 0
+	New-Item -Path "$Path" -Name "Client" -Type "Directory" -ErrorAction SilentlyContinue
+	New-Item -Path "$Path" -Name "Server" -Type "Directory" -ErrorAction SilentlyContinue
+	Set-ItemProperty -Path "$Path\Client" -Type "DWORD" -Name "DisabledByDefault" -Value 1
+	Set-ItemProperty -Path "$Path\Client" -Type "DWORD" -Name "Enabled" -Value 0
+	Set-ItemProperty -Path "$Path\Server" -Type "DWORD" -Name "DisabledByDefault" -Value 1
+	Set-ItemProperty -Path "$Path\Server" -Type "DWORD" -Name "Enabled" -Value 0
 }
 
 $Protocols = 'PCT 1.0', 'SSL 2.0', 'SSL 3.0', 'TLS 1.0', 'TLS 1.1'
@@ -252,18 +252,18 @@ do {
 
 #Enable TLS 1.2
 $Protocol = "TLS 1.2"
-New-Item -Path "$Path" -name "$Protocol" -Type "Directory" -ErrorAction SilentlyContinue
-New-Item -Path "$Path" -name "Client" -Type "Directory" -ErrorAction SilentlyContinue
-New-Item -Path "$Path" -name "Server" -Type "Directory" -ErrorAction SilentlyContinue
-Set-ItemProperty -Path "$Path\Client" -Type DWORD -Name "DisabledByDefault" -Value 0
-Set-ItemProperty -Path "$Path\Client" -Type DWORD -Name "Enabled" -Value 1
-Set-ItemProperty -Path "$Path\Server" -Type DWORD -Name "DisabledByDefault" -Value 0
-Set-ItemProperty -Path "$Path\Server" -Type DWORD -Name "Enabled" -Value 1
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp" -Type DWORD -Name "DefaultSecureProtocols" -Value "0x800"
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp" -Type DWORD -Name "DefaultSecureProtocols" -Value "0x800"
-Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Type DWORD -Name "SecureProtocols" -Value "0x800"
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319" -Type DWORD -Name "chUseStrongCrypto" -Value 1
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" -Type DWORD -Name "chUseStrongCrypto" -Value 1
+New-Item -Path "$Path" -Name "$Protocol" -Type "Directory" -ErrorAction SilentlyContinue
+New-Item -Path "$Path" -Name "Client" -Type "Directory" -ErrorAction SilentlyContinue
+New-Item -Path "$Path" -Name "Server" -Type "Directory" -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "$Path\Client" -Type "DWORD" -Name "DisabledByDefault" -Value 0
+Set-ItemProperty -Path "$Path\Client" -Type "DWORD" -Name "Enabled" -Value 1
+Set-ItemProperty -Path "$Path\Server" -Type "DWORD" -Name "DisabledByDefault" -Value 0
+Set-ItemProperty -Path "$Path\Server" -Type "DWORD" -Name "Enabled" -Value 1
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp" -Type "DWORD" -Name "DefaultSecureProtocols" -Type "DWORD" -Value "0x800"
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp" -Type "DWORD" -Name "DefaultSecureProtocols" -Type "DWORD" -Value "0x800"
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Type "DWORD" -Name "SecureProtocols" -Type "DWORD" -Value "0x800"
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319" -Type "DWORD" -Name "chUseStrongCrypto" -Value 1
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" -Type "DWORD" -Name "chUseStrongCrypto" -Value 1
 $Path = $NULL
 
 #Disable features continued
@@ -271,8 +271,8 @@ Write-Warning "Please uncheck all items except .NET, and Windows Search."
 
 #Disable SMBv1, v2, and v3 (Unnecessary without domain)
 Write-Host "Disabling all SMB versions."
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" -Type DWORD -Name "SMB1" -Value 0
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" -Type DWORD -Name "SMB2" -Value 0
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" -Type "DWORD" -Name "SMB1" -Value 0
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" -Type "DWORD" -Name "SMB2" -Value 0
 sc.exe config lanmanworkstation depend= bowser/mrxsmb20/nsi
 sc.exe config mrxsmb10 start= disabled
 sc.exe config lanmanworkstation depend= bowser/mrxsmb10/nsi
@@ -280,8 +280,8 @@ sc.exe config mrxsmb20 start= disabled
 
 #Set UAC level to High
 Write-Host "Setting UAC level to High."
-Set-ItemProperty -path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Type DWORD -Name "ConsentPromptBehaviorAdmin" -Value 2
-Set-ItemProperty -path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Type DWORD -Name "PromptOnSecureDesktop" -Value 1
+Set-ItemProperty -path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Type "DWORD" -Name "ConsentPromptBehaviorAdmin" -Value 2
+Set-ItemProperty -path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Type "DWORD" -Name "PromptOnSecureDesktop" -Value 1
 
 #Enable a custom local security policy
 Write-Host "Setting custom local security policy."
@@ -297,9 +297,9 @@ Stop-Service "msiserver" -Force
 #Cleaning up files
 Write-Host "Cleaning up files."
 Remove-Item -path ".\Win7.INF" -ErrorAction SilentlyContinue
-Remove-Item -path ".\Win7.sdb" -ErrorAction SilentlyContinue
+Remove-Item -path ".\Win7.SDB" -ErrorAction SilentlyContinue
 Remove-Item -path ".\Win7.WFW" -ErrorAction SilentlyContinue
-Remove-Item -path "..\Win7.zip" -ErrorAction SilentlyContinue
+Remove-Item -path "..\Win7.ZIP" -ErrorAction SilentlyContinue
 
 #Create a standard user
 Write-Warning "Creating a new user. DO NOT name them Admin, Guest, Root, etc."
