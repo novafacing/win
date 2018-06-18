@@ -1,5 +1,5 @@
-#Created by Zamanry, 05/2018
-#Fully functioning as of 06/12/18.
+#Created by Zamanry, 05/14/2018
+#Fully functioning as of 06/18/2018.
 
 #Import firewall
 Write-Host "Installing firewall."
@@ -56,7 +56,7 @@ $Services =
 'DeviceInstall',
 'DsmSvc',
 'NcaSvc',
-'PrintNotify',
+'PrintNotIfy',
 'sacsvr',
 'Audiosrv',
 'AudioEndpointBuilder',
@@ -78,17 +78,17 @@ $Services =
 
 $Index = 0
 $CrntService = $Services[$Index]
-do {
-  if (Get-Service $CrntService -ErrorAction SilentlyContinue) {
+Do {
+  If (Get-Service $CrntService -ErrorAction SilentlyContinue) {
       Set-Service $CrntService -StartupType "Disabled"
       Stop-Service $CrntService -Force
   }
-  else {
+  Else {
       Write-Host "$CrntService not found."
   }
   $Index++
   $CrntService = $Services[$Index]
-} while ($CrntService -ne $NULL)
+} While ($CrntService -ne $NULL)
 
 #Sets Windows Update service to automatic
 Write-Host "Enabling Windows Update."
@@ -105,11 +105,11 @@ Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_msclient'
 Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_pacer'
 Disable-NetAdapterBinding -Name "*" -ComponentID 'ms_server'
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services" -Name "DisabledComponents" -Type "DWORD" -Value "0xFF" #Disable IPv6 completely
-$NIC = Get-WmiObject Win32_NetworkAdapterConfiguration -filter "ipenabled = 'true'" #Disable 'Register this connection's addresses in DNS'
-$NIC.SetDynamicDNSRegistration($false)
+$NIC = Get-WmiObject Win32_NetworkAdapterConfiguration -Filter "ipenabled = 'true'" #Disable 'Register this connection's addresses in DNS'
+$NIC.SetDynamicDNSRegistration($FALSE)
 $NIC.SetTcpipNetbios(2) #Disable NetBIOS over TCP/IP
 $NIC = [wmiclass]'Win32_NetworkAdapterConfiguration' #Disable LMHosts lookup
-$NIC.enablewins($false,$false)
+$NIC.enablewins($FALSE,$FALSE)
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "IGMPLevel" -Type "DWORD" -Value 0 #Disable IGMP
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Type "DWORD" –Value 1 #Disable Remote Desktop
 New-Item -Path "HKLM:\System\CurrentControlSet\Control" -Name "Remote Assistance" -Type "Directory"
@@ -125,10 +125,10 @@ Push-Location
 Set-Location "..\..\..\.."
 $DriveLetter = Get-Location
 Pop-Location
-Move-Item -Path ".\hosts" -destination "$DriveLetter\Windows\system32\drivers\etc\hosts" -Force
+Move-Item -Path ".\hosts" -Destination "$DriveLetter\Windows\system32\drivers\etc\hosts" -Force
 
 #Misc.
-Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control" -Name "CrashControl"-Type "DWORD" -Value "0x0" #Disable memory dumps
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control" -Name "CrashControl" -Type "DWORD" -Value "0x0" #Disable memory dumps
 Set-ItemProperty -Path "HKLM:\Software\Microsoft\ServerManager" -Name "DoNotOpenServerManagerAtLogon"-Type "DWORD" -Value "0x1" #Prevent Server Manager from opening at startup
 
 #Enable/Disable File Explorer options:
@@ -137,7 +137,7 @@ Set-ItemProperty -Path "$Path" -Name "Hidden" -Type "DWORD" -Value 1 #Enable hid
 Set-ItemProperty -Path "$Path" -Name "HideFileExt" -Type "DWORD" -Value 0 #Enable file extensions
 Set-ItemProperty -Path "$Path" -Name "SharingWizardOn" -Type "DWORD" -Value 0 #Disable Sharing Wizard
 Set-ItemProperty -Path "$Path" -Name "Start_TrackProgs" -Type "DWORD" -Value 0 #Disable Jump List items
-Set-ItemProperty -Path "$Path" -Name "Start_TrackDocs" -Type "DWORD" -Value 0 #Disable recent documents
+Set-ItemProperty -Path "$Path" -Name "Start_TrackDocs" -Type "DWORD" -Value 0 #Disable recent Documents
 
 #Enable/Disable Internet Options:
 Write-Host "Enabling/Disabling Internet Options."
@@ -181,7 +181,7 @@ New-Item -Path "$Path1\Main" -Name "FeatureControl" -Type "Directory" -ErrorActi
 New-Item -Path "$Path1\Main\FeatureControl" -Name "FEATURE_LOCALMACHINE_LOCKDOWN" -Type "Directory" -ErrorAction SilentlyContinue
 Set-ItemProperty -Path "$Path1\Main\FeatureControl\FEATURE_LOCALMACHINE_LOCKDOWN" -Name "iexplore.exe" -Type "DWORD" -Value 1
 Set-ItemProperty -Path "$Path1\Download" -Name "RunInvalid" -Type "DWORD" -Value 0
-Set-ItemProperty -Path "$Path" -Name "CertificateRevocation" -Type "DWORD" -Value 1
+Set-ItemProperty -Path "$Path" -Name "CertIficateRevocation" -Type "DWORD" -Value 1
 Set-ItemProperty -Path "$Path1\Download" -Name "CheckExeSignatures" -Type "String" -Value "yes"
 Set-ItemProperty -Path "$Path\CACHE" -Name "Persistent" -Type "DWORD" -Value 0
 Set-ItemProperty -Path "$Path1\Main" -Name "DOMStorage" -Type "DWORD" -Value 0
@@ -196,7 +196,7 @@ $Path1 = $NULL
 #Disable outdated protocols:
 Write-Host "Disabling PCT/SSL/TLS outdated protocols."
 $Path = "HKLM:\System\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols"
-function DisableProtocol {
+Function DisableProtocol {
     New-Item -Path "$Path" -Name "$Protocol" -Type "Directory" -ErrorAction SilentlyContinue
     $Path = "$Path\$Protocol"
     New-Item -Path "$Path" -Name "Client" -Type "Directory" -ErrorAction SilentlyContinue
@@ -210,11 +210,11 @@ function DisableProtocol {
 $Protocols = 'PCT 1.0', 'SSL 2.0', 'SSL 3.0', 'TLS 1.0', 'TLS 1.1'
 $Index = 0
 $Protocol = $Protocols[$Index]
-do {
+Do {
     DisableProtocol
     $Index++
     $Protocol = $Protocols[$Index]
-} while ($Protocol -ne $NULL)
+} While ($Protocol -ne $NULL)
 
 #Enable TLS 1.2
 $Protocol = "TLS 1.2"
@@ -232,12 +232,12 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.
 Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" -Name "chUseStrongCrypto" -Type "DWORD" -Value 1
 $Path = $NULL
 
-#Disable SMBv1, v2, and v3 (Unnecessary without domain)
+#Disable SMBv1, v2, and v3 (Unnecessary without Domain)
 Write-Host "Disabling all SMB versions."
-Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force
+Set-SmbServerConfiguration -EnableSMB1Protocol $FALSE -Force
 Sc.exe config lanmanworkstation depend= bowser/mrxsmb20/nsi
 Sc.exe config mrxsmb10 start= disabled
-Set-SmbServerConfiguration -EnableSMB2Protocol $false -Force
+Set-SmbServerConfiguration -EnableSMB2Protocol $FALSE -Force
 Sc.exe config lanmanworkstation depend= bowser/mrxsmb10/nsi
 Sc.exe config mrxsmb20 start= disabled
 
@@ -263,19 +263,19 @@ Remove-Item -Path "..\S12.ZIP" -ErrorAction SilentlyContinue
 #Create a standard user
 Write-Warning "Creating a new user. DO NOT name them Admin, Guest, Root, etc."
 $Userverb = Read-Host -Prompt "Enter a new username"
-$ctr = 0
-do {
-	if ($ctr -gt 0) {
+$Ctr = 0
+Do {
+	If ($Ctr -gt 0) {
 		Write-Host " "
 		Write-Warning "Passwords did not match."
 	}
-	$Passverb1 = Read-Host -Prompt "Enter password"-AsSecureString
+	$Passverb1 = Read-Host -Prompt "Enter password" -AsSecureString
 	$Passverb2 = Read-Host -Prompt "Re-enter password" -AsSecureString
-	$ctr++
+	$Ctr++
 	If (([Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($Passverb1))) -eq ([Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($Passverb2)))) {
-		$Matched = $True
+		$Matched = $TRUE
 	}
-} while ($Matched -ne $True)
+} While ($Matched -ne $TRUE)
 Net User $Userverb $Passverb1 /Add /Y
 $Userverb, $Passverb1, $Passverb2 = $NULL
 
@@ -290,7 +290,7 @@ Dism /Online /Disable-Feature /FeatureName:WindowsServerBackupSnapin /NoRestart
 Remove-WindowsFeature -Name PowerShell-ISE
 
 Write-Warning "Restarting in 10 seconds..."
-Shutdown /r
+ShutDown /r
 
 #Clear PowerShell command history
 Clear-History
