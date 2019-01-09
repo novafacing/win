@@ -1,4 +1,5 @@
 #Based off the 08/18/2018 version of https://github.com/asbtho/Powershell-Scripts/blob/master/GetProfilesModifiedWithin.ps1
+#This script checks the last time a file was written too.
 
 $Hours = 8
 $Path = (get-location).Drive.Name

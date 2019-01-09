@@ -1,5 +1,5 @@
-#Created by Zamanry, 06/02/2018.
-#Fully functioning as of 01/09/2019.
+#Created by Zamanry, 01/09/2019.
+# # # NEEDS TO BE UPDATED TO Win8.1 FROM Win7 # # #
 
 #Import Windows Firewall
 Write-Host "Installing firewall."

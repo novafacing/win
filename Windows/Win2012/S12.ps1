@@ -121,11 +121,11 @@ Netsh interface ipv4 delete arpcache
 Netsh interface ipv4 delete destinationcache
 Netsh interface ipv4 delete neighbors
 Netsh interface ipv4 delete winsservers "Ethernet" all
-Push-Location
-Set-Location "..\..\..\.."
-$DriveLetter = Get-Location
-Pop-Location
-Move-Item -Path ".\hosts" -Destination "$DriveLetter\Windows\system32\drivers\etc\hosts" -Force
+$Drive = (Get-Location).Drive.Name
+$Drive = "${Drive}:"
+Remove-Item -Path "$Drive\Windows\system32\drivers\etc\hosts" -force
+New-Item -Path "$Drive\Windows\system32\drivers\etc\hosts" -Name "hosts" -ItemType "file" -Value "# This file has been flushed by Zamanry." -force
+$Drive = $NULL
 
 #Misc.
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control" -Name "CrashControl" -Type "DWORD" -Value "0x0" #Disable memory dumps
